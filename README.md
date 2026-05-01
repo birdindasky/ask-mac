@@ -20,6 +20,39 @@
 
 ---
 
+## 📸 看一眼
+
+<table>
+<tr>
+<td width="50%" align="center">
+<img src="assets/screenshots/01-chat.png" alt="单聊 / Chat"/>
+<br/><b>单聊 Chat</b> · ⌘1 · 选 1 个模型,正常多轮对话
+</td>
+<td width="50%" align="center">
+<img src="assets/screenshots/02-compare.png" alt="对比 / Compare"/>
+<br/><b>对比 Compare</b> · ⌘2 · 同一问题,两家并排流式
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+<img src="assets/screenshots/03-debate.png" alt="辩论 / Debate"/>
+<br/><b>辩论 Debate</b> · ⌘3 · 主辩 + 反方,1–4 轮可暂停
+</td>
+<td width="50%" align="center">
+<img src="assets/screenshots/04-discuss.png" alt="求共识 / Discuss"/>
+<br/><b>求共识 Discuss</b> ✨ · ⌘4 · 协议互相修正,自动判收敛
+</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<img src="assets/screenshots/05-settings.png" alt="设置 / Settings" width="80%"/>
+<br/><b>一处接所有模型</b> · 国内国外 LLM + 6 家联网搜索后端
+</td>
+</tr>
+</table>
+
+---
+
 ## ✨ 为什么选 Ask
 
 - 🪟 **真的是 .app**。原生菜单栏、Dock 徽章、托盘、⌘N/W/Q 快捷键、关窗不退出 — macOS 体验完整。
