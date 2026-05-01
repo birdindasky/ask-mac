@@ -1,0 +1,360 @@
+/* Multi-LLM Chat — site styles */
+
+[x-cloak] { display: none !important; }
+
+:root {
+  --font-cn: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-en: "Inter", "SF Pro Text", system-ui, sans-serif;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-en), var(--font-cn);
+  letter-spacing: 0.005em;
+}
+
+:lang(zh), :lang(zh-CN), :lang(zh-Hans) {
+  font-family: var(--font-cn);
+}
+
+/* Wider line-height for CJK readability.
+ * Bubble body font-size scales with --ask-font-size (set by app.js based
+ * on the user's slider preference). Default 16 px maps to the previous
+ * 0.95 rem look. */
+:root { --ask-font-size: 16px; }
+.md-body {
+  line-height: 1.78;
+  font-size: var(--ask-font-size, 16px);
+  word-break: break-word;
+}
+.md-body p { margin: 0.5em 0; }
+.md-body ul, .md-body ol { padding-left: 1.5em; margin: 0.5em 0; }
+.md-body li { margin: 0.2em 0; }
+.md-body code:not(pre code) {
+  background: rgba(127,127,127,0.18);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.md-body pre {
+  background: #0d1117;
+  color: #c9d1d9;
+  padding: 0.9em 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.85em;
+  margin: 0.6em 0;
+  line-height: 1.55;
+}
+.md-body pre code { background: transparent; padding: 0; }
+.md-body table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+}
+.md-body th, .md-body td {
+  border: 1px solid var(--fallback-bc, oklch(var(--bc)/0.2));
+  padding: 0.35em 0.7em;
+}
+.md-body blockquote {
+  border-left: 3px solid var(--fallback-bc, oklch(var(--bc)/0.3));
+  padding-left: 0.8em;
+  opacity: 0.85;
+  margin: 0.5em 0;
+}
+.md-body strong { font-weight: 600; }
+.md-body a { text-decoration: underline; }
+
+/* Theme transitions */
+html, body, .navbar, .card, .btn, .input, .textarea, .select { transition: background-color 0.25s, color 0.25s; }
+
+/* Bubbles — iMessage/WeChat-style with a real pointer tail.
+ * User on the right with a tail pointing right; assistant on the left
+ * with a tail pointing left.
+ *
+ * !important on padding/border/radius is intentional: Tailwind v4's
+ * preflight resets border-width:0 and padding:0 globally, and our
+ * Alpine-injected class names get overridden by the cascade order
+ * unless we hold ground. Hardcoded RGBA fallbacks so we don't depend
+ * on DaisyUI custom properties resolving correctly. */
+.bubble-wrap-user { display: flex !important; justify-content: flex-end !important; }
+.bubble-wrap-asst { display: flex !important; justify-content: flex-start !important; }
+
+.bubble {
+  position: relative !important;
+  max-width: min(76%, 740px) !important;
+  padding: 0.95em 1.15em !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+  transition: box-shadow 0.2s, transform 0.12s;
+}
+[data-theme="dark"] .bubble {
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 20px rgba(0, 0, 0, 0.30) !important;
+}
+.bubble:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10), 0 10px 28px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(-1px);
+}
+
+/* User bubble: violet tint, right-pointing tail */
+.bubble-user {
+  background: #c5b4ff !important;
+  color: #1d1530 !important;
+  border-color: #a48cff !important;
+  border-bottom-right-radius: 4px !important;
+  margin-right: 12px !important;
+}
+[data-theme="dark"] .bubble-user {
+  background: #6e57d6 !important;
+  color: #f3edff !important;
+  border-color: #846eea !important;
+}
+.bubble-user::after {
+  content: '' !important;
+  position: absolute !important;
+  right: -8px;
+  bottom: 6px;
+  width: 0;
+  height: 0;
+  border-style: solid !important;
+  border-width: 8px 0 0 12px !important;
+  border-color: transparent transparent transparent #c5b4ff !important;
+}
+[data-theme="dark"] .bubble-user::after {
+  border-color: transparent transparent transparent #6e57d6 !important;
+}
+
+/* Assistant bubble: clear contrast against page bg, left-pointing tail */
+.bubble-asst {
+  background: #eef0f4 !important;
+  color: #1a1d24 !important;
+  border-color: #d3d7df !important;
+  border-bottom-left-radius: 4px !important;
+  margin-left: 12px !important;
+}
+[data-theme="dark"] .bubble-asst {
+  background: #2a2f3c !important;
+  color: #e8eaf0 !important;
+  border-color: #3b4254 !important;
+}
+.bubble-asst::after {
+  content: '' !important;
+  position: absolute !important;
+  left: -8px;
+  bottom: 6px;
+  width: 0;
+  height: 0;
+  border-style: solid !important;
+  border-width: 8px 12px 0 0 !important;
+  border-color: transparent #eef0f4 transparent transparent !important;
+}
+[data-theme="dark"] .bubble-asst::after {
+  border-color: transparent #2a2f3c transparent transparent !important;
+}
+
+.bubble-asst-debate-lead { border-left: 3px solid #5aa3ff !important; }
+.bubble-asst-debate-critic { border-left: 3px solid #f0b342 !important; }
+.bubble-asst-error { border-left: 3px solid #f04444 !important; }
+
+/* Discuss mode: A 方 cool blue, B 方 warm amber — same shape as the
+ * default assistant bubble, just different fills + tail colors so the
+ * eye can immediately tell whose turn it is. */
+.bubble-asst-discuss-a {
+  background: #dbe8f5 !important;
+  border-color: #9ebbdc !important;
+}
+.bubble-asst-discuss-a::after { border-right-color: #dbe8f5 !important; }
+[data-theme="dark"] .bubble-asst-discuss-a {
+  background: #233347 !important;
+  border-color: #355275 !important;
+}
+[data-theme="dark"] .bubble-asst-discuss-a::after { border-right-color: #233347 !important; }
+
+.bubble-asst-discuss-b {
+  background: #f5e8d3 !important;
+  border-color: #d8b97a !important;
+}
+.bubble-asst-discuss-b::after { border-right-color: #f5e8d3 !important; }
+[data-theme="dark"] .bubble-asst-discuss-b {
+  background: #3a2f1c !important;
+  border-color: #6b552c !important;
+}
+[data-theme="dark"] .bubble-asst-discuss-b::after { border-right-color: #3a2f1c !important; }
+
+.bubble-asst-consensus {
+  background: rgba(58, 196, 124, 0.14) !important;
+  border: 2px solid #3ac47c !important;
+  box-shadow: 0 2px 6px rgba(58, 196, 124, 0.20), 0 12px 32px rgba(58, 196, 124, 0.18) !important;
+}
+.bubble-asst-consensus::after { border-right-color: #3ac47c !important; }
+
+.bubble-asst-checkpoint {
+  background: rgba(240, 179, 66, 0.14) !important;
+  border: 2px solid #f0b342 !important;
+  box-shadow: 0 2px 6px rgba(240, 179, 66, 0.20), 0 12px 32px rgba(240, 179, 66, 0.18) !important;
+}
+.bubble-asst-checkpoint::after { border-right-color: #f0b342 !important; }
+
+.bubble-asst-consensus .md-body,
+.bubble-asst-checkpoint .md-body { font-weight: 500; }
+
+/* Prominent in-bubble banner for consensus / checkpoint sections —
+ * the user wanted these moments to feel like genuine milestones,
+ * not just another assistant turn with a different border. */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85em;
+  margin: 0.15em 0 0.85em;
+  padding: 0.7em 0.95em;
+  border-radius: 12px;
+  font-family: var(--font-cn), var(--font-en);
+}
+.banner-icon {
+  font-size: 1.85em;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.banner-text { display: flex; flex-direction: column; gap: 2px; }
+.banner-title { font-size: 1.05em; font-weight: 700; letter-spacing: 0.01em; }
+.banner-sub { font-size: 0.78em; opacity: 0.72; line-height: 1.4; }
+
+.banner-consensus {
+  background: linear-gradient(135deg, rgba(58, 196, 124, 0.18), rgba(58, 196, 124, 0.10));
+  border: 1px solid rgba(58, 196, 124, 0.45);
+  color: #176a3f;
+}
+[data-theme="dark"] .banner-consensus { color: #7ce0a8; }
+
+.banner-checkpoint {
+  background: linear-gradient(135deg, rgba(240, 179, 66, 0.20), rgba(240, 179, 66, 0.10));
+  border: 1px solid rgba(240, 179, 66, 0.45);
+  color: #8a5a10;
+}
+[data-theme="dark"] .banner-checkpoint { color: #f5c97a; }
+
+/* Typography polish inside bubbles — tighter section breaks, more breathing
+ * room around 协议字段标题 like "【当前判断】", clearer code block gutters. */
+.md-body p { margin: 0.55em 0; }
+.md-body p:first-child { margin-top: 0; }
+.md-body p:last-child { margin-bottom: 0; }
+.md-body ul, .md-body ol { margin: 0.5em 0; padding-left: 1.65em; }
+.md-body li { margin: 0.25em 0; }
+.md-body li > p { margin: 0.2em 0; }
+.md-body h1, .md-body h2, .md-body h3, .md-body h4 {
+  margin: 1em 0 0.45em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.md-body h1:first-child, .md-body h2:first-child,
+.md-body h3:first-child, .md-body h4:first-child { margin-top: 0.2em; }
+.md-body pre { margin: 0.75em 0; }
+.md-body blockquote { margin: 0.6em 0; }
+
+/* Compact toast stack */
+.toast > .alert { box-shadow: 0 4px 18px rgba(0,0,0,0.18); }
+
+/* Composer drag-over highlight + attachment chips */
+.composer-dragging {
+  outline: 2px dashed oklch(var(--p) / 0.7);
+  outline-offset: -4px;
+  background: oklch(var(--p) / 0.06);
+}
+.attachment-chip {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.78em;
+}
+
+/* Citation + inference badges in assistant bubbles */
+.citation-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15em;
+  padding: 0 0.4em;
+  border-radius: 999px;
+  background: oklch(var(--p) / 0.18);
+  color: oklch(var(--p));
+  font-size: 0.7em;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none !important;
+  margin: 0 0.12em;
+  vertical-align: super;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.citation-pill:hover {
+  background: oklch(var(--p) / 0.32);
+  text-decoration: none !important;
+}
+
+.guess-pill {
+  display: inline-block;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  background: oklch(var(--wa) / 0.22);
+  color: oklch(var(--wa));
+  font-size: 0.72em;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0.12em;
+  vertical-align: super;
+  cursor: help;
+  user-select: none;
+}
+
+/* Sources footer (collapsible) */
+.sources-footer {
+  margin-top: 0.6em;
+  padding-top: 0.5em;
+  border-top: 1px dashed oklch(var(--bc) / 0.18);
+  font-size: 0.78em;
+}
+.sources-footer > summary {
+  cursor: pointer;
+  opacity: 0.7;
+  list-style: none;
+  user-select: none;
+}
+.sources-footer > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.sources-footer[open] > summary::before { content: "▾ "; }
+.sources-footer ol {
+  margin: 0.4em 0 0 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.75;
+}
+.sources-footer li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  word-break: break-word;
+}
+.sources-footer .src-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  background: oklch(var(--p) / 0.18);
+  color: oklch(var(--p));
+  font-size: 0.78em;
+  font-weight: 600;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.sources-footer .src-host {
+  opacity: 0.55;
+  font-size: 0.85em;
+  margin-left: 0.4em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}

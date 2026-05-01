@@ -1,0 +1,28 @@
+venv/
+venv312/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+.DS_Store
+.coverage
+*.egg-info/
+.env
+node_modules/
+
+# py2app / dmgbuild artifacts
+build/
+dist/
+
+# Icon staging — Ask.icns is checked in, the iconset folder is regenerated.
+assets/Ask.iconset/
+assets/Ask-1024.png
+
+# Dev-mode data
+.ask-dev/
+
+# Multi-agent coordination scratch
+.claude/
+
+# Local-only git history backups (private, never publish)
+.git.backup-*/

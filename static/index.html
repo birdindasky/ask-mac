@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-LLM Chat by Claude</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+
+  <!-- Both themes loaded; only the one matching effectiveTheme is enabled.
+       app.js applyTheme() flips the disabled attribute on these two links. -->
+  <link
+    id="hljs-dark"
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"
+  />
+  <link
+    id="hljs-light"
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css"
+    disabled
+  />
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="font-sans antialiased min-h-screen bg-base-200 text-base-content">
+  <div id="app" x-data="appData()" x-init="init()" x-cloak class="h-screen flex flex-col">
+    <!-- Top bar -->
+    <header class="navbar bg-base-100 border-b border-base-300 px-4 gap-3 shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🗣️</span>
+        <span class="text-lg font-semibold tracking-tight">Multi-LLM Chat</span>
+        <span class="badge badge-ghost badge-sm">by Claude</span>
+      </div>
+
+      <div class="ml-auto flex items-center gap-2 flex-wrap">
+        <!-- Mode tabs -->
+        <div role="tablist" class="tabs tabs-boxed tabs-sm bg-base-200" :aria-label="t('header.modes.aria','对话模式')">
+          <template x-for="m in modes" :key="m.id">
+            <button
+              role="tab"
+              :aria-selected="mode === m.id"
+              :class="['tab', mode === m.id ? 'tab-active' : '']"
+              @click="setMode(m.id)"
+              x-text="m.label"
+            ></button>
+          </template>
+        </div>
+
+        <button
+          class="btn btn-sm btn-ghost gap-1"
+          @click="toggleTheme()"
+          :title="tFmt('header.theme.titleTpl','当前: '+themeLabel()+' (点击切换 深色 → 浅色 → 跟随系统)',{label: themeLabel()})"
+          :aria-label="tFmt('header.theme.aria','切换主题,当前 '+themeLabel(),{label: themeLabel()})"
+        >
+          <span x-text="themeIcon()"></span>
+          <span class="hidden sm:inline" x-text="themeLabel()"></span>
+        </button>
+        <button class="btn btn-sm btn-ghost" @click="showCheatsheet=true" :title="t('header.cheatsheet.title','键盘快捷键 (⌘+/)')" :aria-label="t('header.cheatsheet.aria','键盘快捷键')">⌨️</button>
+        <button class="btn btn-sm btn-primary" @click="openSettings()" :aria-label="t('header.settings.aria','打开设置页')" x-text="t('header.settings','⚙️ 设置')"></button>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar -->
+      <aside class="w-72 border-r border-base-300 bg-base-100 flex flex-col shrink-0" :aria-label="t('sidebar.aria','会话列表')">
+        <div class="p-3 border-b border-base-300 flex gap-2">
+          <button class="btn btn-sm btn-primary flex-1" @click="newSession()" :aria-label="t('sidebar.newSession.aria','新建会话')" x-text="t('sidebar.newSession','＋ 新建')"></button>
+          <input
+            type="search"
+            class="input input-sm input-bordered w-32"
+            :placeholder="t('sidebar.search.placeholder','搜索…')"
+            x-model="sessionQuery"
+            @input.debounce.250ms="loadSessions()"
+            :aria-label="t('sidebar.search.aria','搜索会话')"
+          />
+        </div>
+        <div class="flex-1 overflow-y-auto">
+          <template x-for="s in sessions" :key="s.id">
+            <div
+              :class="['group p-3 border-b border-base-300 cursor-pointer hover:bg-base-200', currentSession && currentSession.id === s.id ? 'bg-base-200' : '']"
+              @click="selectSession(s.id)"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="font-medium text-sm truncate" x-text="s.title"></div>
+                  <div class="text-xs opacity-60 mt-0.5 flex items-center gap-1">
+                    <span x-text="modeLabel(s.mode)"></span>
+                    <span>·</span>
+                    <span x-text="formatTime(s.updated_at)"></span>
+                  </div>
+                </div>
+                <button
+                  class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+                  @click.stop="confirmDelete(s)"
+                  :aria-label="tFmt('sidebar.delete.aria','删除会话 '+s.title,{title: s.title})"
+                  :title="t('sidebar.delete.title','删除会话')"
+                >🗑️</button>
+              </div>
+            </div>
+          </template>
+          <div x-show="sessions.length === 0" class="p-4 text-sm opacity-60 text-center" x-text="t('sidebar.empty','还没有会话。点上方“＋ 新建”开始聊天吧。')"></div>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Empty state (only when wizard already done but no providers) -->
+        <template x-if="providers.length === 0 && !welcomeVisible">
+          <div class="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
+            <div class="text-6xl">👋</div>
+            <h2 class="text-2xl font-bold" x-text="t('home.welcome.title','欢迎,先加一个模型再聊吧')"></h2>
+            <p class="opacity-70 max-w-md" x-text="t('home.welcome.body','你还没有配置任何模型。点下面按钮去设置页,我会一步步带你加第一个 provider — 国内国外、API 还是订阅,都支持。')"></p>
+            <button class="btn btn-primary btn-lg" @click="openSettings()" x-text="t('home.welcome.cta','去设置页加第一个模型 →')"></button>
+          </div>
+        </template>
+
+        <!-- Chat panel -->
+        <template x-if="providers.length > 0">
+          <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Model picker bar -->
+            <div class="p-3 border-b border-base-300 bg-base-100 flex flex-wrap items-center gap-3">
+              <template x-if="mode === 'chat'">
+                <div class="flex items-center gap-2">
+                  <label for="picker-chat" class="text-sm opacity-70" x-text="t('picker.model','模型')"></label>
+                  <select
+                    id="picker-chat"
+                    class="select select-bordered select-sm"
+                    x-model="chatPick.composite"
+                    @change="onChatPickerChange()"
+                  >
+                    <option value="" x-text="t('picker.pick','选一个模型')"></option>
+                    <template x-for="opt in flatModelOptions" :key="opt.value">
+                      <option :value="opt.value" x-text="opt.label"></option>
+                    </template>
+                  </select>
+                </div>
+              </template>
+
+              <template x-if="mode === 'compare' || mode === 'debate' || mode === 'discuss'">
+                <div class="flex flex-wrap items-center gap-3">
+                  <div class="flex items-center gap-2">
+                    <label for="picker-a" class="text-sm opacity-70" x-text="mode === 'compare' ? t('picker.left','左侧') : t('picker.sideA','A 方')"></label>
+                    <select id="picker-a" class="select select-bordered select-sm" x-model="pairPick.aComposite" @change="onPairPickerChange('a')">
+                      <option value="" x-text="t('picker.pick','选一个模型')"></option>
+                      <template x-for="opt in flatModelOptions" :key="'a-'+opt.value">
+                        <option :value="opt.value" x-text="opt.label"></option>
+                      </template>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <label for="picker-b" class="text-sm opacity-70" x-text="mode === 'compare' ? t('picker.right','右侧') : t('picker.sideB','B 方')"></label>
+                    <select id="picker-b" class="select select-bordered select-sm" x-model="pairPick.bComposite" @change="onPairPickerChange('b')">
+                      <option value="" x-text="t('picker.pick','选一个模型')"></option>
+                      <template x-for="opt in flatModelOptions" :key="'b-'+opt.value">
+                        <option :value="opt.value" x-text="opt.label"></option>
+                      </template>
+                    </select>
+                  </div>
+                </div>
+              </template>
+
+              <template x-if="mode === 'debate'">
+                <div class="flex flex-col gap-2 w-full">
+                  <div class="flex items-center gap-2">
+                    <label for="picker-debate" class="text-sm opacity-70" x-text="t('picker.debate.way','辩论方式')"></label>
+                    <select id="picker-debate" class="select select-bordered select-sm" x-model="debate.subMode">
+                      <option value="lead_critic" x-text="t('picker.debate.leadCritic','主辩 + 反方')"></option>
+                      <option value="symmetric" x-text="t('picker.debate.symmetric','对称双方')"></option>
+                    </select>
+                    <label for="picker-rounds" class="text-sm opacity-70 ml-2" x-text="t('picker.debate.rounds','轮数')"></label>
+                    <select id="picker-rounds" class="select select-bordered select-sm" x-model.number="debate.rounds">
+                      <option :value="1">1</option>
+                      <option :value="2">2</option>
+                      <option :value="3">3</option>
+                      <option :value="4">4</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="text"
+                      class="input input-bordered input-sm flex-1 min-w-48"
+                      :placeholder="t('picker.debate.stanceA.placeholder','A 方立场(可选,例如:AI 不会取代程序员)')"
+                      x-model="debate.stanceA"
+                      :aria-label="t('picker.debate.stanceA.aria','A 方立场')"
+                    />
+                    <input
+                      type="text"
+                      class="input input-bordered input-sm flex-1 min-w-48"
+                      :placeholder="t('picker.debate.stanceB.placeholder','B 方立场(可选,例如:程序员将在十年内被 AI 取代)')"
+                      x-model="debate.stanceB"
+                      :aria-label="t('picker.debate.stanceB.aria','B 方立场')"
+                    />
+                  </div>
+                </div>
+              </template>
+
+              <template x-if="mode === 'discuss'">
+                <div class="flex items-center gap-2">
+                  <label for="picker-discuss-rounds" class="text-sm opacity-70" x-text="t('picker.discuss.thisRun','本次跑')"></label>
+                  <select id="picker-discuss-rounds" class="select select-bordered select-sm" x-model.number="discuss.maxRounds">
+                    <option :value="1" x-text="t('picker.discuss.rounds1Default','1 轮(默认)')"></option>
+                    <option :value="2" x-text="t('picker.discuss.rounds2','2 轮')"></option>
+                    <option :value="3" x-text="t('picker.discuss.rounds3','3 轮')"></option>
+                    <option :value="4" x-text="t('picker.discuss.rounds4','4 轮')"></option>
+                    <option :value="5" x-text="t('picker.discuss.rounds5','5 轮')"></option>
+                  </select>
+                  <span class="text-xs opacity-60" x-text="t('picker.discuss.note','跑完后由你决定是否继续')"></span>
+                </div>
+              </template>
+
+              <div class="ml-auto flex items-center gap-3 text-xs opacity-70">
+                <button
+                  type="button"
+                  :class="['btn btn-sm gap-1', webSearchOn ? 'btn-primary' : 'btn-ghost']"
+                  @click="toggleWebSearch()"
+                  :aria-pressed="webSearchOn"
+                  :aria-label="t('picker.web.toggleAria','切换联网模式')"
+                  :title="webSearch.configured ? (webSearchOn ? t('picker.web.titleConfiguredOn','已联网,点击关闭') : t('picker.web.titleConfiguredOff','点击开启联网搜索')) : t('picker.web.titleUnconfigured','请先在设置里填 Tavily key')"
+                >
+                  <span aria-hidden="true">🌐</span>
+                  <span x-text="webSearchOn ? t('picker.web.online','联网中') : t('picker.web.offline','联网')"></span>
+                </button>
+                <span x-text="readyHint()"></span>
+              </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4" x-ref="msgContainer">
+              <template x-if="!currentSession">
+                <div class="text-center opacity-60 mt-12">
+                  <p class="text-lg mb-2" x-text="t('home.noSession.title','还没选会话。')"></p>
+                  <p class="text-sm" x-text="t('home.noSession.body','点左侧“＋ 新建”,或挑一个旧会话继续。')"></p>
+                </div>
+              </template>
+
+              <template x-if="currentSession && messages.length === 0">
+                <div class="text-center opacity-60 mt-12">
+                  <p class="text-lg mb-2" x-text="t('home.empty.title','空空如也。')"></p>
+                  <p class="text-sm" x-text="t('home.empty.body','在下面输入框敲一句话开始对话吧。')"></p>
+                </div>
+              </template>
+
+              <!-- chat / debate render: linear -->
+              <template x-if="mode !== 'compare'">
+                <div class="space-y-3">
+                  <template x-for="m in messages" :key="m.id">
+                    <div :class="bubbleWrapper(m.role)" :data-message-id="m.id">
+                      <div :class="bubbleBox(m)">
+                        <div class="text-xs opacity-60 mb-1 flex items-center gap-2 flex-wrap">
+                          <span x-text="bubbleLabel(m)"></span>
+                          <span x-show="m.meta?.web_search" class="badge badge-primary badge-xs" :title="t('bubble.badge.web.title','此回答基于联网检索,引用 [n] 可点击,[推] 是模型推测')" x-text="t('bubble.badge.web','🌐 联网')"></span>
+                          <span x-show="m.meta?.summary" class="badge badge-info badge-xs" :title="t('bubble.badge.summary.title','历史摘要 — 长会话压缩后的合成消息')" x-text="t('bubble.badge.summary','📦 摘要')"></span>
+                          <span x-show="m.meta?.consensus" class="badge badge-success badge-xs" :title="t('bubble.badge.consensus.title','讨论结束,A 方汇总的最终共识')" x-text="t('bubble.badge.consensus','📌 共识')"></span>
+                          <span x-show="m.meta?.checkpoint" class="badge badge-warning badge-xs" :title="t('bubble.badge.checkpoint.title','跑完一批轮次没有自动收敛,A 方先汇总进度,等你决定继续还是收尾')" x-text="t('bubble.badge.checkpoint','⏸ 进度')"></span>
+                          <button
+                            x-show="m.meta?.consensus"
+                            class="btn btn-success btn-xs ml-auto"
+                            @click="copyText(m.content)"
+                            :aria-label="t('bubble.copyConsensus.aria','复制共识全文')"
+                            x-text="t('bubble.copyConsensus','📋 复制共识')"
+                          ></button>
+                          <span
+                            x-show="m.meta?.checkpoint && m.id === messages[messages.length - 1]?.id && !streaming"
+                            class="ml-auto flex items-center gap-2"
+                          >
+                            <button class="btn btn-warning btn-sm" @click="continueDiscuss()" :aria-label="t('bubble.continueDiscuss.aria','继续讨论一批')" x-text="t('bubble.continueDiscuss','↻ 继续讨论')"></button>
+                            <button class="btn btn-success btn-sm" @click="finalizeDiscuss()" :aria-label="t('bubble.finalizeDiscuss.aria','结束讨论,生成最终共识')" x-text="t('bubble.finalizeDiscuss','✓ 出最终共识')"></button>
+                          </span>
+                          <button
+                            x-show="mode === 'debate' && m.role === 'assistant' && !m.meta?.adopted"
+                            class="btn btn-ghost btn-xs"
+                            @click="adopt(m)"
+                            :aria-label="tFmt('bubble.adopt.aria','采纳 '+bubbleLabel(m)+' 的发言',{who: bubbleLabel(m)})"
+                            x-text="t('bubble.adopt','采纳')"
+                          ></button>
+                          <span x-show="m.meta?.adopted" class="badge badge-success badge-xs" x-text="t('bubble.adopted','已采纳')"></span>
+                          <span x-show="m.meta?.error" class="badge badge-error badge-xs" x-text="m.meta.error?.slice(0,30)"></span>
+                          <!-- assistant hover toolbar: copy / regenerate / change-model-regenerate -->
+                          <span
+                            x-show="mode === 'chat' && m.role === 'assistant' && m.id === messages[messages.length - 1]?.id && !streaming"
+                            class="ml-auto flex items-center gap-1"
+                          >
+                            <button class="btn btn-ghost btn-xs" @click="copyText(m.content)" :aria-label="t('bubble.copy.aria','复制全文')" x-text="t('bubble.copy','复制')"></button>
+                            <button class="btn btn-ghost btn-xs" @click="regenerateLast()" :aria-label="t('bubble.regen.aria','重新生成')" x-text="t('bubble.regen','↻ 重新生成')"></button>
+                            <select
+                              class="select select-ghost select-xs max-w-40"
+                              @change="$event.target.value && regenerateLast({providerId: $event.target.value.split('::')[0], modelId: $event.target.value.split('::')[1]}); $event.target.value = ''"
+                              :aria-label="t('bubble.regenSwitch.aria','换模型重新生成')"
+                            >
+                              <option value="" x-text="t('bubble.regenSwitch','换模型重生…')"></option>
+                              <template x-for="opt in flatModelOptions" :key="opt.value">
+                                <option :value="opt.value" x-text="opt.label"></option>
+                              </template>
+                            </select>
+                          </span>
+                        </div>
+
+                        <!-- Prominent banner for consensus / checkpoint sections.
+                             Subtitle prefers the model's own【概要】one-liner; falls back
+                             to a generic placeholder so older messages without 概要 still render. -->
+                        <div x-show="m.meta?.consensus" class="banner banner-consensus">
+                          <span class="banner-icon" aria-hidden="true">🎯</span>
+                          <div class="banner-text">
+                            <div class="banner-title" x-text="t('bubble.banner.consensus.title','最终共识')"></div>
+                            <div class="banner-sub" x-text="extractSummary(m.content) || t('bubble.banner.consensus.sub','A 方汇总,讨论结束')"></div>
+                          </div>
+                        </div>
+                        <div x-show="m.meta?.checkpoint" class="banner banner-checkpoint">
+                          <span class="banner-icon" aria-hidden="true">⏸</span>
+                          <div class="banner-text">
+                            <div class="banner-title" x-text="t('bubble.banner.checkpoint.title','阶段总结')"></div>
+                            <div class="banner-sub" x-text="extractSummary(m.content) || t('bubble.banner.checkpoint.sub','还没收尾,你来决定继续讨论还是出最终共识')"></div>
+                          </div>
+                        </div>
+
+                        <div class="md-body" x-html="renderMd(m.content, m.meta?.search_sources)"></div>
+                        <details x-show="m.meta?.search_sources?.length" class="sources-footer">
+                          <summary><span x-text="t('bubble.sources.title','📚 来源')"></span> (<span x-text="m.meta.search_sources?.length"></span>)</summary>
+                          <ol>
+                            <template x-for="(s, i) in (m.meta?.search_sources || [])" :key="i+'-'+s.url">
+                              <li>
+                                <span class="src-num" x-text="`[${i+1}]`"></span>
+                                <span class="flex-1 min-w-0">
+                                  <a :href="s.url" target="_blank" rel="noopener" class="link" x-text="s.title || s.url"></a>
+                                  <span class="src-host" x-text="hostFromUrl(s.url)"></span>
+                                </span>
+                              </li>
+                            </template>
+                          </ol>
+                        </details>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+
+              <!-- compare render: 2-col grid for assistant turns -->
+              <template x-if="mode === 'compare'">
+                <div class="space-y-4">
+                  <template x-for="row in compareGrouped" :key="row.key">
+                    <div>
+                      <template x-if="row.user">
+                        <div :class="bubbleWrapper('user')">
+                          <div :class="bubbleBox(row.user)">
+                            <div class="text-xs opacity-60 mb-1" x-text="t('bubble.you','你')"></div>
+                            <div class="md-body" x-html="renderMd(row.user.content)"></div>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="row.left || row.right">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                          <template x-for="side in ['left','right']" :key="row.key + side">
+                            <div class="card bg-base-100 border border-base-300">
+                              <div class="card-body p-3">
+                                <div class="text-xs opacity-60 mb-1 flex items-center gap-2 flex-wrap">
+                                  <span x-text="row[side] ? bubbleLabel(row[side]) : t('bubble.compare.none','(无)')"></span>
+                                  <span x-show="row[side]?.meta?.web_search" class="badge badge-primary badge-xs">🌐</span>
+                                </div>
+                                <div class="md-body" x-html="row[side] ? renderMd(row[side].content, row[side].meta?.search_sources) : t('bubble.compare.waiting','<em class=opacity-40>等待中…</em>')"></div>
+                                <details x-show="row[side]?.meta?.search_sources?.length" class="sources-footer">
+                                  <summary><span x-text="t('bubble.sources.title','📚 来源')"></span> (<span x-text="row[side]?.meta?.search_sources?.length"></span>)</summary>
+                                  <ol>
+                                    <template x-for="(s, i) in (row[side]?.meta?.search_sources || [])" :key="i+'-'+s.url">
+                                      <li>
+                                        <span class="src-num" x-text="`[${i+1}]`"></span>
+                                        <span class="flex-1 min-w-0">
+                                          <a :href="s.url" target="_blank" rel="noopener" class="link" x-text="s.title || s.url"></a>
+                                          <span class="src-host" x-text="hostFromUrl(s.url)"></span>
+                                        </span>
+                                      </li>
+                                    </template>
+                                  </ol>
+                                </details>
+                              </div>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </template>
+
+              <div x-show="streaming" class="text-xs opacity-60 italic" x-text="t('composer.streaming','⏳ 正在输出…')"></div>
+            </div>
+
+            <!-- Budget bar -->
+            <div class="border-t border-base-300 bg-base-100 px-3 py-2" x-show="currentSession && budget.max_tokens">
+              <div class="flex items-center gap-3 text-xs">
+                <progress
+                  class="progress flex-1"
+                  :class="budgetClass()"
+                  :value="budget.pct"
+                  max="100"
+                  :aria-label="tFmt('budget.aria','上下文已用 '+budget.pct+'%',{pct: budget.pct})"
+                ></progress>
+                <span class="opacity-70 tabular-nums" x-text="budgetLabel()"></span>
+                <button
+                  x-show="budget.warn"
+                  class="btn btn-xs btn-warning"
+                  @click="runSummarize()"
+                  :disabled="summarizing"
+                  :aria-label="t('budget.summarize.aria','压缩历史')"
+                >
+                  <span x-show="!summarizing" x-text="t('budget.summarize','📦 压缩历史')"></span>
+                  <span x-show="summarizing" x-text="t('budget.summarizing','压缩中…')"></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Composer -->
+            <div
+              class="border-t border-base-300 bg-base-100 p-3"
+              x-show="currentSession || true"
+              :class="composerDragging ? 'composer-dragging' : ''"
+              @dragover.prevent="onComposerDragOver($event)"
+              @dragleave="onComposerDragLeave($event)"
+              @drop.prevent="onComposerDrop($event)"
+            >
+              <!-- Attachment chips -->
+              <div x-show="attachments.length" class="flex flex-wrap gap-2 mb-2">
+                <template x-for="(att, i) in attachments" :key="i+'-'+att.name">
+                  <div class="badge badge-outline gap-1 py-3 attachment-chip">
+                    <span x-text="attachmentLabel(att)"></span>
+                    <button type="button" class="btn btn-ghost btn-xs px-1" @click="removeAttachment(i)" :aria-label="t('composer.attachment.removeAria','移除附件')">✕</button>
+                  </div>
+                </template>
+              </div>
+
+              <form @submit.prevent="send()" class="flex items-end gap-2">
+                <label for="composer" class="sr-only" x-text="t('composer.aria','输入消息')"></label>
+                <input type="file" data-attach-input class="hidden" multiple
+                       accept="image/*,.txt,.md,.json,.csv,.tsv,.log,.py,.js,.ts,.tsx,.jsx,.sh,.yaml,.yml,.toml,.ini,.cfg,.html,.css,.sql"
+                       @change="pickAttachments($event.target.files); $event.target.value=''" />
+                <button type="button" class="btn btn-ghost btn-square"
+                        @click="document.querySelector('input[data-attach-input]').click()"
+                        :disabled="streaming" :title="t('composer.attach.title','附加图片或文本文件')" :aria-label="t('composer.attach.aria','附加文件')">📎</button>
+                <textarea
+                  id="composer"
+                  data-composer
+                  class="textarea textarea-bordered flex-1 resize-none leading-relaxed"
+                  rows="2"
+                  :placeholder="composerPlaceholder()"
+                  x-model="draft"
+                  @keydown.enter.exact.prevent="send()"
+                  @keydown.meta.enter.prevent="send()"
+                  @paste="onComposerPaste($event)"
+                  :disabled="streaming"
+                ></textarea>
+                <button type="button" class="btn btn-ghost" @click="cancelStream()" :disabled="!streaming" :aria-label="t('composer.stop.aria','停止当前输出')" x-text="t('composer.stop','⏹ 停止')"></button>
+                <button type="submit" class="btn btn-primary" :disabled="!canSend()" :aria-label="t('composer.send.aria','发送消息')">
+                  <span x-show="!streaming" x-text="t('composer.send','发送')"></span>
+                  <span x-show="streaming" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+                </button>
+              </form>
+              <div class="text-xs opacity-50 mt-1" x-text="t('composer.hint','回车发送 · Shift+回车换行 · ⌘+回车强发 · 拖入 / 粘贴 / 📎 加图片或文本')"></div>
+            </div>
+          </div>
+        </template>
+      </main>
+    </div>
+
+    <!-- Welcome wizard (4 steps) -->
+    <!-- Shown when welcome_done is false AND providers.length === 0,
+         OR when user clicks "重看欢迎" in settings (showWelcomeForce). -->
+    <div x-show="welcomeVisible" x-cloak
+         class="fixed inset-0 z-40 bg-base-300/80 backdrop-blur-sm flex items-center justify-center p-4"
+         @keydown.escape.window="showWelcomeForce && (showWelcomeForce=false)">
+      <div class="card bg-base-100 border border-base-300 shadow-2xl w-full max-w-xl">
+        <div class="card-body p-6 space-y-4">
+          <!-- progress dots -->
+          <div class="flex items-center gap-2">
+            <template x-for="i in [1,2,3,4]" :key="i">
+              <span :class="['inline-block w-2.5 h-2.5 rounded-full', welcomeStep===i ? 'bg-primary' : (welcomeStep>i ? 'bg-primary/60' : 'bg-base-300')]"></span>
+            </template>
+            <span class="ml-auto text-xs opacity-60" x-text="`${welcomeStep} / 4`"></span>
+          </div>
+
+          <!-- step 1: intro -->
+          <template x-if="welcomeStep===1">
+            <div class="space-y-3">
+              <div class="text-5xl">👋</div>
+              <h2 class="text-2xl font-bold" x-text="t('welcome.step1.title','你好,这是 Ask')"></h2>
+              <p class="opacity-80" x-text="t('welcome.step1.body','Ask 是一个本地多模型对话工具,把不同 LLM 放在一起用,看它们怎么回答你的同一个问题。')"></p>
+              <ul class="text-sm space-y-1 opacity-90 list-disc pl-5">
+                <li x-text="t('welcome.step1.bullet1','单聊 — 跟一个模型对话')"></li>
+                <li x-text="t('welcome.step1.bullet2','对比 — 同一句话两个模型并排回答')"></li>
+                <li x-text="t('welcome.step1.bullet3','辩论 — 让两个模型针锋相对')"></li>
+                <li x-text="t('welcome.step1.bullet4','讨论 — 让两个模型协作求共识')"></li>
+              </ul>
+            </div>
+          </template>
+
+          <!-- step 2: model required -->
+          <template x-if="welcomeStep===2">
+            <div class="space-y-3">
+              <div class="text-5xl">🔌</div>
+              <h2 class="text-2xl font-bold" x-text="t('welcome.step2.title','加一个模型')"></h2>
+              <p class="opacity-80" x-text="t('welcome.step2.body','至少需要一个 provider 才能聊天。可以是 OpenAI、Anthropic、Gemini,也可以接 Claude CLI / Codex CLI 或本地 OpenAI 兼容服务。')"></p>
+              <button type="button" class="btn btn-primary" @click="welcomeOpenAddProvider()" x-text="t('welcome.step2.cta','+ 加 provider')"></button>
+              <p x-show="providers.length > 0" class="text-sm text-success" x-text="tFmt('welcome.step2.added','✓ 已加 '+providers.length+' 个 provider',{n: providers.length})"></p>
+            </div>
+          </template>
+
+          <!-- step 3: search optional -->
+          <template x-if="welcomeStep===3">
+            <div class="space-y-3">
+              <div class="text-5xl">🌐</div>
+              <h2 class="text-2xl font-bold" x-text="t('welcome.step3.title','联网搜索(可选)')"></h2>
+              <p class="opacity-80" x-text="t('welcome.step3.body','想让模型查最新信息?可以接一个搜索后端。这一步可以跳过,以后再设。')"></p>
+              <div class="flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-sm btn-outline"
+                        @click="openSettings(); settingsTab='providers'"
+                        x-text="t('welcome.step3.tavily','Tavily')"></button>
+                <button type="button" class="btn btn-sm btn-outline btn-disabled"
+                        x-text="t('welcome.step3.bing','Bing(暂未支持)')"></button>
+              </div>
+            </div>
+          </template>
+
+          <!-- step 4: done -->
+          <template x-if="welcomeStep===4">
+            <div class="space-y-3">
+              <div class="text-5xl">🎉</div>
+              <h2 class="text-2xl font-bold" x-text="t('welcome.step4.title','搞定')"></h2>
+              <p class="opacity-80" x-text="t('welcome.step4.body','点上面的模式标签或用快捷键 ⌘1 / ⌘2 / ⌘3 / ⌘4 切换模式,⌘/ 看完整快捷键。')"></p>
+            </div>
+          </template>
+
+          <!-- footer -->
+          <div class="flex items-center gap-2 pt-2">
+            <button type="button" class="btn btn-ghost btn-sm" @click="welcomeBack()" x-show="welcomeStep>1">←</button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="welcomeSkip()" x-show="welcomeStep<4" x-text="t('welcome.skip','跳过')"></button>
+            <div class="flex-1"></div>
+            <button type="button" class="btn btn-primary"
+                    @click="welcomeNext()"
+                    :disabled="welcomeStep===2 && providers.length===0"
+                    x-show="welcomeStep<4"
+                    x-text="t('welcome.next','下一步')"></button>
+            <button type="button" class="btn btn-primary" @click="welcomeFinish()" x-show="welcomeStep===4" x-text="t('welcome.start','开始使用')"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="toast toast-top toast-end z-50">
+      <template x-for="t in toasts" :key="t.id">
+        <div :class="['alert', t.kind === 'error' ? 'alert-error' : t.kind === 'warn' ? 'alert-warning' : 'alert-success']">
+          <span x-text="t.text"></span>
+          <button x-show="t.detail" class="btn btn-xs btn-ghost ml-2" @click="openErrorDetail(t)" :aria-label="t('errorDetail.viewDetail','查看详情')" x-text="t('errorDetail.viewDetail','查看详情')"></button>
+        </div>
+      </template>
+    </div>
+
+    <!-- Error detail -->
+    <dialog class="modal" :class="{'modal-open': errorDetail.open}">
+      <div class="modal-box max-w-2xl">
+        <div class="flex items-center mb-3">
+          <h3 class="font-bold text-lg" x-text="errorDetail.title"></h3>
+          <button class="btn btn-sm btn-ghost ml-auto" @click="errorDetail.open=false" :aria-label="t('errorDetail.closeAria','关闭')">✕</button>
+        </div>
+        <pre class="text-xs whitespace-pre-wrap break-all bg-base-300 p-3 rounded max-h-96 overflow-auto" x-text="errorDetail.detail"></pre>
+        <div class="modal-action">
+          <button class="btn btn-sm" @click="copyText(errorDetail.detail)" x-text="t('errorDetail.copy','📋 复制')"></button>
+          <button class="btn btn-sm btn-primary" @click="errorDetail.open=false" x-text="t('errorDetail.close','关闭')"></button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button @click="errorDetail.open=false">close</button></form>
+    </dialog>
+
+    <!-- Keyboard cheatsheet -->
+    <dialog class="modal" :class="{'modal-open': showCheatsheet}">
+      <div class="modal-box max-w-2xl">
+        <div class="flex items-center mb-4">
+          <h3 class="font-bold text-lg" x-text="t('cheatsheet.title','⌨️ 键盘快捷键')"></h3>
+          <button class="btn btn-sm btn-ghost ml-auto" @click="showCheatsheet=false" :aria-label="t('cheatsheet.close','关闭')">✕</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+          <div class="font-semibold opacity-70 col-span-full mt-1" x-text="t('cheatsheet.section.session','会话')"></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.newSession','新建会话')"></span><kbd class="kbd kbd-sm">⌘ N</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.focusComposer','聚焦输入框')"></span><kbd class="kbd kbd-sm">⌘ L</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.globalSearch','全局搜索')"></span><kbd class="kbd kbd-sm">⌘ F</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.send','发送消息')"></span><kbd class="kbd kbd-sm">↩</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.newline','换行')"></span><kbd class="kbd kbd-sm">⇧ ↩</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.forceSend','强制发送')"></span><kbd class="kbd kbd-sm">⌘ ↩</kbd></div>
+
+          <div class="font-semibold opacity-70 col-span-full mt-3" x-text="t('cheatsheet.section.mode','模式')"></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.modeChat','单聊')"></span><kbd class="kbd kbd-sm">⌘ 1</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.modeCompare','对比')"></span><kbd class="kbd kbd-sm">⌘ 2</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.modeDebate','辩论')"></span><kbd class="kbd kbd-sm">⌘ 3</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.modeDiscuss','讨论')"></span><kbd class="kbd kbd-sm">⌘ 4</kbd></div>
+
+          <div class="font-semibold opacity-70 col-span-full mt-3" x-text="t('cheatsheet.section.display','显示')"></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.fontUp','放大字号')"></span><kbd class="kbd kbd-sm">⌘ =</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.fontDown','缩小字号')"></span><kbd class="kbd kbd-sm">⌘ −</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.fontReset','还原字号')"></span><kbd class="kbd kbd-sm">⌘ 0</kbd></div>
+
+          <div class="font-semibold opacity-70 col-span-full mt-3" x-text="t('cheatsheet.section.app','应用')"></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.openSettings','设置')"></span><kbd class="kbd kbd-sm">⌘ ,</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.openCheatsheet','本面板')"></span><kbd class="kbd kbd-sm">⌘ /</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.hideWindow','隐藏窗口(留菜单栏)')"></span><kbd class="kbd kbd-sm">⌘ W</kbd></div>
+          <div class="flex justify-between"><span x-text="t('cheatsheet.quit','退出')"></span><kbd class="kbd kbd-sm">⌘ Q</kbd></div>
+        </div>
+        <p class="text-xs opacity-60 mt-4" x-text="t('cheatsheet.note','附件:把图片或文本文件拖到输入框,或在输入框里按 ⌘V 粘贴图片,或点 📎。')"></p>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button @click="showCheatsheet=false">close</button></form>
+    </dialog>
+
+    <!-- Settings dialog -->
+    <dialog class="modal" :class="{'modal-open': showSettings}" @close="showSettings=false" x-ref="settingsDialog" :aria-label="t('settings.title','设置')">
+      <div class="modal-box max-w-4xl">
+        <div class="flex items-center mb-4">
+          <h2 class="text-xl font-bold" x-text="t('settings.title','设置')"></h2>
+          <button class="btn btn-sm btn-ghost ml-auto" @click="closeSettings()" :aria-label="t('settings.close','关闭设置')">✕</button>
+        </div>
+
+        <div role="tablist" class="tabs tabs-boxed mb-4">
+          <button role="tab" :class="['tab', settingsTab==='providers' ? 'tab-active' : '']" @click="settingsTab='providers'" x-text="t('settings.tab.providers','🔌 模型 / 联网')"></button>
+          <button role="tab" :class="['tab', settingsTab==='behavior' ? 'tab-active' : '']" @click="settingsTab='behavior'" x-text="t('settings.tab.behavior','🎨 外观与行为')"></button>
+          <button role="tab" :class="['tab', settingsTab==='data' ? 'tab-active' : '']" @click="settingsTab='data'" x-text="t('settings.tab.data','💾 数据')"></button>
+        </div>
+
+        <!-- Behavior card -->
+        <div x-show="settingsTab==='behavior'" class="card bg-base-200 border border-base-300 mb-4">
+          <div class="card-body p-4 space-y-4">
+            <div>
+              <h3 class="font-semibold mb-2" x-text="t('settings.behavior.theme','主题')"></h3>
+              <div class="flex gap-2">
+                <template x-for="opt in [{id:'dark',key:'settings.behavior.theme.dark',label:'☀️ 深色'},{id:'light',key:'settings.behavior.theme.light',label:'🌙 浅色'},{id:'system',key:'settings.behavior.theme.system',label:'🖥️ 跟随系统'}]" :key="opt.id">
+                  <button type="button"
+                          :class="['btn btn-sm', theme===opt.id ? 'btn-primary' : 'btn-outline']"
+                          @click="setTheme(opt.id)" x-text="t(opt.key, opt.label)"></button>
+                </template>
+              </div>
+              <p class="text-xs opacity-60 mt-1" x-text="t('settings.behavior.theme.note','“跟随系统”会随 macOS 在浅 / 深色之间自动切换。')"></p>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-2" x-text="t('settings.behavior.font','字号')"></h3>
+              <div class="flex items-center gap-3">
+                <button type="button" class="btn btn-sm btn-outline" @click="bumpFont(-1)" :aria-label="t('settings.behavior.font.smaller.aria','减小字号')" x-text="t('settings.behavior.font.smaller','A−')"></button>
+                <input type="range" min="13" max="22" step="1" class="range range-sm range-primary flex-1"
+                       :value="fontSize" @input="setFontSize($event.target.value)" :aria-label="t('settings.behavior.font.range.aria','字号滑杆')" />
+                <button type="button" class="btn btn-sm btn-outline" @click="bumpFont(1)" :aria-label="t('settings.behavior.font.larger.aria','放大字号')" x-text="t('settings.behavior.font.larger','A+')"></button>
+                <span class="font-mono text-sm w-10 text-right" x-text="fontSize + 'px'"></span>
+                <button type="button" class="btn btn-xs btn-ghost" @click="resetFont()" x-text="t('settings.behavior.font.reset','还原')"></button>
+              </div>
+              <p class="text-xs opacity-60 mt-1" x-text="t('settings.behavior.font.note','⌘= 放大 · ⌘− 缩小 · ⌘0 还原。仅影响对话气泡里的正文。')"></p>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-2" x-text="t('settings.behavior.locale','语言')"></h3>
+              <div class="flex gap-2 flex-wrap">
+                <template x-for="opt in [{id:'system',key:'settings.behavior.locale.system',label:'🌐 跟随系统'},{id:'zh',key:'settings.behavior.locale.zh',label:'中文'},{id:'en',key:'settings.behavior.locale.en',label:'English'}]" :key="opt.id">
+                  <button type="button"
+                          :class="['btn btn-sm', locale===opt.id ? 'btn-primary' : 'btn-outline']"
+                          @click="setLocale(opt.id)" x-text="t(opt.key, opt.label)"></button>
+                </template>
+              </div>
+              <p class="text-xs opacity-60 mt-1" x-text="t('settings.behavior.locale.note','切换界面语言。“跟随系统”会读取浏览器的首选语言。')"></p>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-2" x-text="t('settings.behavior.autostart','开机启动')"></h3>
+              <label class="label cursor-pointer gap-2 justify-start">
+                <input type="checkbox" class="toggle toggle-sm toggle-primary"
+                       :checked="autostart" @change="setAutostart($event.target.checked)" />
+                <span class="label-text" x-text="autostart
+                  ? t('settings.behavior.autostart.on','开机自动启动 Ask')
+                  : t('settings.behavior.autostart.off','登录后不自动启动')"></span>
+              </label>
+              <p class="text-xs opacity-60 mt-1" x-text="t('settings.behavior.autostart.note','在 ~/Library/LaunchAgents 写一个 plist,系统登录时自动拉起 Ask。')"></p>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-2" x-text="t('settings.behavior.welcome','欢迎引导')"></h3>
+              <button type="button" class="btn btn-sm btn-outline" @click="replayWelcome()" x-text="t('settings.behavior.welcome.replay','重看欢迎')"></button>
+              <p class="text-xs opacity-60 mt-1" x-text="t('settings.behavior.welcome.note','把新手引导再走一遍。')"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data card -->
+        <div x-show="settingsTab==='data'" class="card bg-base-200 border border-base-300 mb-4">
+          <div class="card-body p-4 space-y-4">
+            <div>
+              <h3 class="font-semibold mb-2" x-text="t('settings.data.config.title','配置(provider 列表 + 联网设置 + 偏好)')"></h3>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-sm" @click="exportConfig()" :disabled="dataOps.exporting" x-text="t('settings.data.config.export','⬇️ 导出配置')"></button>
+                <input type="file" data-import-config class="hidden" accept=".json,application/json"
+                       @change="importConfig($event.target.files[0]); $event.target.value=''" />
+                <button type="button" class="btn btn-sm btn-outline"
+                        @click="document.querySelector('input[data-import-config]').click()"
+                        :disabled="dataOps.importing" x-text="t('settings.data.config.import','⬆️ 导入配置')"></button>
+              </div>
+              <p class="text-xs opacity-60 mt-1" x-html="t('settings.data.config.note','导出的 JSON <strong>不包含 API key</strong> — key 存在 macOS 钥匙串里,导入后需要重新填。')"></p>
+            </div>
+
+            <div class="border-t border-base-300 pt-3">
+              <h3 class="font-semibold mb-2" x-text="t('settings.data.sessions.title','会话记录')"></h3>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-sm" @click="exportSessions()" :disabled="dataOps.exporting" x-text="t('settings.data.sessions.export','⬇️ 导出全部会话')"></button>
+                <input type="file" data-import-sessions class="hidden" accept=".json,application/json"
+                       @change="importSessions($event.target.files[0], false); $event.target.value=''" />
+                <button type="button" class="btn btn-sm btn-outline"
+                        @click="document.querySelector('input[data-import-sessions]').click()"
+                        :disabled="dataOps.importing" x-text="t('settings.data.sessions.importOverwrite','⬆️ 导入(覆盖)')"></button>
+                <input type="file" data-import-sessions-merge class="hidden" accept=".json,application/json"
+                       @change="importSessions($event.target.files[0], true); $event.target.value=''" />
+                <button type="button" class="btn btn-sm btn-outline"
+                        @click="document.querySelector('input[data-import-sessions-merge]').click()"
+                        :disabled="dataOps.importing" x-text="t('settings.data.sessions.importMerge','⬆️ 导入(合并)')"></button>
+              </div>
+              <p class="text-xs opacity-60 mt-1" x-text="t('settings.data.sessions.note','“覆盖”清掉现有会话再导入;“合并”按 ID 增量插入,重复 ID 会覆盖。')"></p>
+            </div>
+
+            <div class="border-t border-base-300 pt-3">
+              <h3 class="font-semibold text-error mb-2" x-text="t('settings.data.danger.title','⚠️ 危险区')"></h3>
+              <button type="button" class="btn btn-sm btn-error btn-outline"
+                      @click="confirmWipeSessions()" :disabled="dataOps.wiping" x-text="t('settings.data.danger.wipe','🗑️ 清空全部会话')"></button>
+              <p class="text-xs opacity-60 mt-1" x-text="t('settings.data.danger.note','只删会话和消息,provider / 钥匙不动。建议先导出留底。')"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Web search settings -->
+        <div x-show="settingsTab==='providers'">
+        <div class="card bg-base-200 border border-base-300 mb-4">
+          <div class="card-body p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-lg">🌐</span>
+              <h3 class="font-semibold" x-text="t('settings.web.title','联网搜索')"></h3>
+              <span x-show="activeBackendDescriptor()?.configured" class="badge badge-success badge-sm" x-text="`✓ ${activeBackendDescriptor()?.label || ''}`"></span>
+              <span x-show="!activeBackendDescriptor()?.configured" class="badge badge-warning badge-sm" x-text="t('settings.web.unconfigured','当前后端未配置 key')"></span>
+              <span class="text-xs opacity-60 ml-auto" x-text="t('settings.web.shared','所有模型共用,对模型透明')"></span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label for="ws-active" class="label-text text-xs" x-text="t('settings.web.activeBackend','当前使用的搜索后端')"></label>
+                <select id="ws-active" class="select select-bordered select-sm w-full" x-model="webSearch.active" @change="saveWebSearch({active: webSearch.active})">
+                  <template x-for="b in webSearch.providers" :key="b.name">
+                    <option :value="b.name" x-text="`${b.label}${b.configured ? ' ✓' : ''}`"></option>
+                  </template>
+                </select>
+                <p class="text-xs opacity-60 mt-1" x-text="activeBackendDescriptor()?.hint"></p>
+              </div>
+              <div class="flex items-end gap-3 flex-wrap">
+                <label class="label cursor-pointer gap-2">
+                  <span class="label-text text-xs" x-text="t('settings.web.defaultOn','默认开启')"></span>
+                  <input type="checkbox" class="toggle toggle-sm toggle-primary" x-model="webSearch.default_on" @change="saveWebSearch({default_on: webSearch.default_on})" />
+                </label>
+                <label for="ws-depth" class="label-text text-xs" x-text="t('settings.web.depth','深度')"></label>
+                <select id="ws-depth" class="select select-bordered select-sm" x-model="webSearch.depth" @change="saveWebSearch({depth: webSearch.depth})">
+                  <option value="basic" x-text="t('settings.web.depth.basic','basic(快)')"></option>
+                  <option value="advanced" x-text="t('settings.web.depth.advanced','advanced(深)')"></option>
+                </select>
+                <label for="ws-count" class="label-text text-xs" x-text="t('settings.web.count','条数')"></label>
+                <select id="ws-count" class="select select-bordered select-sm" x-model.number="webSearch.max_results" @change="saveWebSearch({max_results: webSearch.max_results})">
+                  <template x-for="n in [3,5,7,10]" :key="n"><option :value="n" x-text="n"></option></template>
+                </select>
+              </div>
+            </div>
+
+            <!-- Key form for active backend -->
+            <template x-if="activeBackendDescriptor()">
+              <div class="mt-3 pt-3 border-t border-base-300">
+                <div class="flex items-end gap-2 flex-wrap">
+                  <div class="flex-1 min-w-[200px]">
+                    <label for="ws-key" class="label-text text-xs">
+                      <span x-text="tFmt('settings.web.apiKeyTpl', activeBackendDescriptor().label+' API Key', {label: activeBackendDescriptor().label})"></span>
+                      <a :href="activeBackendDescriptor().signup_url" target="_blank" class="link text-xs ml-2" x-text="t('settings.web.signup','[去注册]')"></a>
+                    </label>
+                    <input
+                      id="ws-key"
+                      type="password"
+                      autocomplete="off"
+                      spellcheck="false"
+                      class="input input-bordered input-sm w-full font-mono"
+                      x-model="webSearch.formKey"
+                      :placeholder="activeBackendDescriptor().configured ? t('settings.web.keyPlaceholder.set','留空保留原有密钥') : t('settings.web.keyPlaceholder.empty','sk- / tvly- 等')"
+                    />
+                  </div>
+                  <button type="button" class="btn btn-sm" @click="testWebSearch()" :disabled="webSearch.testing">
+                    <span x-show="!webSearch.testing" x-text="t('settings.web.test','🩺 测试')"></span>
+                    <span x-show="webSearch.testing" class="loading loading-spinner loading-sm"></span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-primary" @click="saveWebSearchKey()" :disabled="!webSearch.formKey" x-text="t('settings.web.save','保存')"></button>
+                  <button type="button" class="btn btn-sm btn-ghost" @click="clearActiveBackendKey()" x-show="activeBackendDescriptor().configured" x-text="t('settings.web.clear','清空')"></button>
+                </div>
+                <div class="mt-2" x-show="webSearch.testResult">
+                  <span class="text-sm" :class="webSearch.testResult?.ok ? 'text-success' : 'text-error'" x-text="webSearch.testResult ? (webSearch.testResult.ok ? '✓ ' : '✗ ') + (webSearch.testResult.message || '') : ''"></span>
+                  <template x-if="webSearch.testResult?.results_preview?.length">
+                    <ul class="text-xs opacity-70 mt-1 ml-4 list-disc">
+                      <template x-for="r in webSearch.testResult.results_preview" :key="r.url">
+                        <li><a :href="r.url" target="_blank" class="link" x-text="r.title"></a></li>
+                      </template>
+                    </ul>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Status grid -->
+            <div class="mt-3 pt-3 border-t border-base-300">
+              <p class="text-xs opacity-70 mb-1" x-text="t('settings.web.allBackends','所有支持的后端(点击切换):')"></p>
+              <div class="flex gap-2 flex-wrap">
+                <template x-for="b in webSearch.providers" :key="b.name">
+                  <button
+                    type="button"
+                    :class="['btn btn-xs', b.name === webSearch.active ? 'btn-primary' : 'btn-outline']"
+                    @click="webSearch.active = b.name; saveWebSearch({active: b.name}); webSearch.formKey=''; webSearch.testResult=null"
+                  >
+                    <span x-text="b.label"></span>
+                    <span x-show="b.configured" class="ml-1">✓</span>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-3">
+          <p class="text-sm opacity-70" x-text="tFmt('settings.providers.countTpl','已配置 '+providers.length+' 个 provider',{n: providers.length})"></p>
+          <button class="btn btn-primary btn-sm" @click="openAddProvider()" x-text="t('settings.providers.add','+ 添加提供方')"></button>
+        </div>
+
+        <div class="space-y-3">
+          <template x-for="p in providers" :key="p.id">
+            <div class="card bg-base-200 border border-base-300" :data-provider-id="p.id">
+              <div class="card-body p-4">
+                <div class="flex items-start gap-3">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-semibold" x-text="p.name"></h3>
+                      <span class="badge badge-ghost badge-sm" x-text="kindLabel(p.kind)"></span>
+                      <span class="badge badge-sm" :class="p.enabled ? 'badge-success' : 'badge-ghost'" x-text="p.enabled ? t('settings.providers.enabled','启用') : t('settings.providers.disabled','关闭')"></span>
+                    </div>
+                    <div class="text-xs opacity-70 mt-1">
+                      <span x-show="p.config?.base_url" x-text="p.config.base_url"></span>
+                      <span class="ml-2" x-text="tFmt('settings.providers.modelsTpl','模型: '+((p.models || []).length),{n: (p.models || []).length})"></span>
+                    </div>
+                    <div class="text-xs opacity-60 mt-1" x-text="(p.models || []).join(', ')"></div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <input type="checkbox" class="toggle toggle-sm toggle-success" :checked="p.enabled" @change="toggleProvider(p, $event.target.checked)" :aria-label="tFmt('settings.providers.toggleAria','启用或停用 '+p.name,{name: p.name})" />
+                    <button class="btn btn-xs" @click="openEditProvider(p)" :aria-label="tFmt('settings.providers.editAria','编辑 '+p.name,{name: p.name})" x-text="t('settings.providers.edit','编辑')"></button>
+                    <button class="btn btn-xs btn-error btn-outline" @click="confirmDeleteProvider(p)" :aria-label="tFmt('settings.providers.deleteAria','删除 '+p.name,{name: p.name})" x-text="t('settings.providers.delete','删除')"></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div x-show="providers.length === 0" class="text-center opacity-60 py-8" x-text="t('settings.providers.empty','还没有 provider,点上方“+ 添加提供方”开始。')"></div>
+        </div>
+        </div><!-- /settingsTab==='providers' -->
+      </div>
+      <form method="dialog" class="modal-backdrop"><button @click="closeSettings()" :aria-label="t('settings.closeButton.aria','关闭设置')">close</button></form>
+    </dialog>
+
+    <!-- Add / edit provider dialog -->
+    <dialog class="modal" :class="{'modal-open': showProviderForm}" :aria-label="t('pform.dialog.aria','编辑 Provider')">
+      <div class="modal-box max-w-3xl">
+        <div class="flex items-center mb-4">
+          <h2 class="text-xl font-bold" x-text="providerForm.id ? t('pform.editTitle','编辑 Provider') : t('pform.addTitle','添加 Provider')"></h2>
+          <button class="btn btn-sm btn-ghost ml-auto" @click="closeProviderForm()" :aria-label="t('pform.close.aria','关闭表单')">✕</button>
+        </div>
+
+        <template x-if="!providerForm.id && !providerForm.template_key">
+          <div>
+            <p class="text-sm opacity-70 mb-3" x-text="t('pform.tip','选一个模板,我帮你预填好 base_url 和默认模型:')"></p>
+            <template x-for="(group, cat) in templatesByCategory" :key="cat">
+              <div class="mb-4">
+                <h3 class="text-sm font-semibold opacity-70 mb-2" x-text="categoryLabels[cat] || cat"></h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <template x-for="t in group" :key="t.key">
+                    <button class="btn btn-sm btn-outline justify-start" @click="pickTemplate(t)">
+                      <span x-text="t.label"></span>
+                    </button>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <template x-if="providerForm.id || providerForm.template_key">
+          <form @submit.prevent="saveProvider()" class="space-y-3">
+            <div>
+              <label for="pf-name" class="label-text text-sm" x-text="t('pform.name','显示名')"></label>
+              <input id="pf-name" type="text" class="input input-bordered w-full" x-model="providerForm.name" required />
+            </div>
+
+            <template x-if="providerForm.template_hint">
+              <div class="alert alert-info text-sm" x-text="providerForm.template_hint"></div>
+            </template>
+
+            <template x-if="providerForm.fields.includes('base_url') || providerForm.template_key === 'custom' || providerForm.kind === 'openai_compat'">
+              <div>
+                <label for="pf-baseurl" class="label-text text-sm" x-text="t('pform.baseUrl','base_url')"></label>
+                <input id="pf-baseurl" type="url" class="input input-bordered w-full" x-model="providerForm.config.base_url" placeholder="https://api.example.com/v1" />
+              </div>
+            </template>
+
+            <template x-if="providerForm.fields.includes('api_key')">
+              <div>
+                <label for="pf-key" class="label-text text-sm" x-text="t('pform.apiKey','API Key')"></label>
+                <input
+                  id="pf-key"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  class="input input-bordered w-full font-mono"
+                  x-model="providerForm.config.api_key"
+                  :placeholder="providerForm.id ? t('pform.apiKey.preserve','留空保留原有密钥') : 'sk-...'"
+                />
+              </div>
+            </template>
+
+            <div>
+              <label for="pf-models" class="label-text text-sm" x-text="t('pform.models','模型列表(每行一个)')"></label>
+              <textarea id="pf-models" class="textarea textarea-bordered w-full font-mono text-sm" rows="4" x-model="providerForm.modelsText"></textarea>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+              <button type="button" class="btn btn-sm" @click="testProvider()" :disabled="providerForm.testing" :aria-label="t('pform.test.aria','测试连通性')">
+                <span x-show="!providerForm.testing" x-text="t('pform.test','🩺 测试')"></span>
+                <span x-show="providerForm.testing" class="loading loading-spinner loading-sm"></span>
+              </button>
+              <span x-show="providerForm.testResult" class="text-sm" :class="providerForm.testResult?.ok ? 'text-success' : 'text-error'" x-text="providerForm.testResult ? (providerForm.testResult.ok ? '✓ ' : '✗ ') + providerForm.testResult.message : ''"></span>
+            </div>
+            <template x-if="providerForm.testResult && providerForm.testResult.detail">
+              <pre class="text-xs opacity-60 whitespace-pre-wrap max-h-32 overflow-auto bg-base-300 p-2 rounded" x-text="providerForm.testResult.detail"></pre>
+            </template>
+
+            <div class="modal-action">
+              <button type="button" class="btn btn-ghost" @click="closeProviderForm()" x-text="t('pform.cancel','取消')"></button>
+              <button type="submit" class="btn btn-primary" :disabled="!providerForm.canSave" x-text="t('pform.save','保存')"></button>
+            </div>
+          </form>
+        </template>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button @click="closeProviderForm()" :aria-label="t('pform.close.modal','关闭')">close</button></form>
+    </dialog>
+
+    <!-- Confirm delete -->
+    <dialog class="modal" :class="{'modal-open': confirmModal.show}">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg" x-text="confirmModal.title"></h3>
+        <p class="py-3" x-text="confirmModal.body"></p>
+        <div class="modal-action">
+          <button class="btn btn-ghost" @click="confirmModal.show=false" x-text="t('confirm.cancel','取消')"></button>
+          <button class="btn btn-error" @click="confirmModal.onYes && confirmModal.onYes(); confirmModal.show=false" x-text="t('confirm.delete','确认删除')"></button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Global search overlay (⌘+F) -->
+    <dialog class="modal" :class="{'modal-open': searchOverlay.open}" @close="closeSearchOverlay()">
+      <div class="modal-box w-11/12 max-w-3xl">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg">🔍</span>
+          <input
+            type="text"
+            data-search-overlay
+            class="input input-bordered flex-1"
+            :placeholder="t('search.placeholder','搜索所有会话的消息内容…')"
+            x-model="searchOverlay.q"
+            @input.debounce.250ms="runSearchOverlay()"
+            @keydown.escape="closeSearchOverlay()"
+          />
+          <button class="btn btn-sm btn-ghost" @click="closeSearchOverlay()" :aria-label="t('search.close','关闭搜索')">✕</button>
+        </div>
+        <div x-show="searchOverlay.loading" class="text-sm opacity-60 italic" x-text="t('search.loading','查询中…')"></div>
+        <div x-show="!searchOverlay.loading && searchOverlay.q && searchOverlay.results.length === 0" class="text-sm opacity-60" x-text="t('search.empty','没找到匹配的消息。')">
+        </div>
+        <ul class="space-y-1 max-h-[60vh] overflow-y-auto">
+          <template x-for="hit in searchOverlay.results" :key="hit.message_id">
+            <li
+              class="p-2 rounded hover:bg-base-200 cursor-pointer"
+              @click="jumpToSearchHit(hit)"
+            >
+              <div class="text-xs opacity-60 flex items-center gap-2">
+                <span x-text="hit.session_title"></span>
+                <span>·</span>
+                <span x-text="modeLabel(hit.session_mode)"></span>
+                <span>·</span>
+                <span x-text="hit.role === 'user' ? '👤' : (hit.speaker || '🤖')"></span>
+              </div>
+              <div class="text-sm leading-relaxed" x-html="hit.snippet"></div>
+            </li>
+          </template>
+        </ul>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button @click="closeSearchOverlay()">close</button></form>
+    </dialog>
+  </div>
+
+  <script src="/static/i18n.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
