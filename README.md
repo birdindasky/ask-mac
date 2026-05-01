@@ -2,7 +2,7 @@
 
 # Ask
 
-**一个 macOS 上的本地多模型聊天 / 对比 / 辩论 / 求共识桌面 App**
+**A native macOS app for multi-LLM chat, side-by-side compare, debate, and consensus-finding — all in one window.**
 
 *One Mac app. Every LLM. Chat with one, compare two, watch them debate, or make them reach consensus.*
 
@@ -12,65 +12,67 @@
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
+**English** | [中文](./README_zh.md)
+
 </div>
 
 ---
 
-> 不再为"问哪个模型好"纠结。**一个窗口里同时召唤所有家**:Claude、GPT、Gemini、DeepSeek、GLM、通义、Moonshot、自建网关…让它们独立回答、并排对比、互相辩论,甚至**逼它们达成共识**。
+> Stop agonizing over "which model is best." **Summon them all in one window** — Claude, GPT, Gemini, DeepSeek, GLM, Qwen, Moonshot, your own gateway. Have them answer independently, line them up side by side, make them debate each other, or **force them to reach consensus.**
 
 ---
 
-## 📸 看一眼
+## 📸 A quick look
 
 <table>
 <tr>
 <td width="50%" align="center">
-<img src="assets/screenshots/01-chat.png" alt="单聊 / Chat"/>
-<br/><b>单聊 Chat</b> · ⌘1 · 选 1 个模型,正常多轮对话
+<img src="assets/screenshots/01-chat.png" alt="Chat"/>
+<br/><b>Chat</b> · ⌘1 · Pick one model, chat normally
 </td>
 <td width="50%" align="center">
-<img src="assets/screenshots/02-compare.png" alt="对比 / Compare"/>
-<br/><b>对比 Compare</b> · ⌘2 · 同一问题,两家并排流式
+<img src="assets/screenshots/02-compare.png" alt="Compare"/>
+<br/><b>Compare</b> · ⌘2 · Same prompt, two models streaming side by side
 </td>
 </tr>
 <tr>
 <td width="50%" align="center">
-<img src="assets/screenshots/03-debate.png" alt="辩论 / Debate"/>
-<br/><b>辩论 Debate</b> · ⌘3 · 主辩 + 反方,1–4 轮可暂停
+<img src="assets/screenshots/03-debate.png" alt="Debate"/>
+<br/><b>Debate</b> · ⌘3 · Lead vs Critic, 1–4 rounds, pause anytime
 </td>
 <td width="50%" align="center">
-<img src="assets/screenshots/04-discuss.png" alt="求共识 / Discuss"/>
-<br/><b>求共识 Discuss</b> ✨ · ⌘4 · 协议互相修正,自动判收敛
+<img src="assets/screenshots/04-discuss.png" alt="Discuss"/>
+<br/><b>Discuss</b> ✨ · ⌘4 · Protocol-driven cross-correction, auto-detect convergence
 </td>
 </tr>
 <tr>
 <td colspan="2" align="center">
-<img src="assets/screenshots/05-settings.png" alt="设置 / Settings" width="80%"/>
-<br/><b>一处接所有模型</b> · 国内国外 LLM + 6 家联网搜索后端
+<img src="assets/screenshots/05-settings.png" alt="Settings" width="80%"/>
+<br/><b>One place to wire up every model</b> · global + China LLMs + 6 web-search backends
 </td>
 </tr>
 </table>
 
 ---
 
-## ✨ 为什么选 Ask
+## ✨ Why Ask
 
-- 🪟 **真的是 .app**。原生菜单栏、Dock 徽章、托盘、⌘N/W/Q 快捷键、关窗不退出 — macOS 体验完整。
-- 💬 **四种对话模式**,一键切:
-  - **单聊** — 像 ChatGPT 一样和单个模型聊
-  - **对比** — 同一问题,两家模型并排流式输出
-  - **辩论** — 主辩 vs 反方,1–4 轮,中途可暂停可采纳
-  - **求共识** ✨v0.2 新增 — 双方按协议互相质询,**把握度都 ≥ 8 且判断一致就提前收敛**
-- 🌐 **谁都能接**。Anthropic API + OpenAI API + Gemini + Claude CLI(订阅)+ Codex CLI(订阅)+ 任何 OpenAI 兼容地址
-- 🔍 **联网搜索内置**,6 家任选(Tavily / Exa / Brave / Serper / Jina / 博查),与所有 LLM 解耦
-- 🔐 **API key 进 macOS Keychain**,JSON 配置只存模板和元数据
-- 📦 **本地优先**。SQLite + FTS5 全文搜索(中文 trigram),所有会话留在你机器上
-- 🌍 **中英双语**,319 条文案 100% 覆盖
-- 🚀 **零构建前端**。DaisyUI v5 + Tailwind v4 + Alpine.js,全部 CDN,改完刷新就行
+- 🪟 **A real .app**. Native menu bar, Dock badge, status item, ⌘N/W/Q shortcuts, close-without-quit — full macOS feel.
+- 💬 **Four conversation modes**, one keystroke to switch:
+  - **Chat** — talk to a single model, just like ChatGPT
+  - **Compare** — same prompt, two models streaming side by side
+  - **Debate** — Lead vs Critic, 1–4 rounds, pausable, adoptable mid-flight
+  - **Discuss** ✨ new in v0.2 — both sides cross-question via protocol; **once both confidence ≥ 8 and verdicts match, it converges early**
+- 🌐 **Connect anything**. Anthropic API + OpenAI API + Gemini + Claude CLI (subscription) + Codex CLI (subscription) + any OpenAI-compatible endpoint
+- 🔍 **Built-in web search**, 6 backends to pick from (Tavily / Exa / Brave / Serper / Jina / Bocha) — decoupled from the LLMs
+- 🔐 **API keys live in macOS Keychain**; the JSON config only stores templates and metadata
+- 📦 **Local-first**. SQLite + FTS5 full-text search (CJK trigram), every conversation stays on your machine
+- 🌍 **English & Chinese**, 319 strings at 100% coverage
+- 🚀 **Zero front-end build**. DaisyUI v5 + Tailwind v4 + Alpine.js, all CDN — edit, refresh, done.
 
 ---
 
-## 🚀 30 秒上手
+## 🚀 30-second start
 
 ```bash
 git clone https://github.com/birdindasky/ask-mac.git
@@ -79,53 +81,53 @@ make build && make dmg
 open dist/Ask-0.2.0.dmg
 ```
 
-把 Ask 拖进 Applications,Spotlight 搜 `Ask` 启动 — 设置里填 1 个模型 key 就能用。
+Drag Ask into Applications, launch via Spotlight (`Ask`) — drop in one model's API key in Settings and you're chatting.
 
-> 不想构建?直接去 [Releases](https://github.com/birdindasky/ask-mac/releases) 下载现成的 `.dmg`。
+> Don't want to build? Grab a prebuilt `.dmg` from [Releases](https://github.com/birdindasky/ask-mac/releases).
 
-数据落在 `~/Library/Application Support/Ask/`,日志在 `~/Library/Logs/Ask/ask.log`,
-API key 存在系统钥匙串(service `com.birdindasky.ask`)。
+Data lives in `~/Library/Application Support/Ask/`, logs in `~/Library/Logs/Ask/ask.log`,
+API keys go straight into the system keychain (service `com.birdindasky.ask`).
 
 ---
 
-## 🛡️ 首次启动:绕过 Gatekeeper(必看)
+## 🛡️ First launch: getting past Gatekeeper (read this)
 
-Ask 还没买 Apple Developer 证书做代码签名 + 公证(那是 $99/年的 club fee 😅),所以**首次双击打开会被 macOS 拦下**,弹窗写:
+Ask isn't signed with an Apple Developer cert and notarized (that's a $99/year club fee 😅), so **the first double-click will be blocked by macOS** with a dialog like:
 
-> "无法打开 Ask,因为 Apple 无法检查其是否包含恶意软件。"
+> "Ask can't be opened because Apple cannot check it for malicious software."
 
-别慌,这**不**代表 Ask 有毒,只是没付苹果税而已。两种方法绕过(任选其一,**只需做一次**):
+Don't panic — this does **not** mean Ask is malware, just that I haven't paid the Apple tax. Three ways around it (pick one, **only needed once**):
 
-### 方法 A — 右键打开(最快)
+### Option A — Right-click open (fastest)
 
-1. 在 Finder 里找到 `Ask.app`(/Applications 或你拖进去的位置)
-2. **按住 Control 点击**(或右键)Ask.app → 在菜单选 **"打开"**
-3. 弹窗里再点一次 **"打开"**
+1. In Finder, locate `Ask.app` (in /Applications or wherever you dragged it)
+2. **Control-click** (or right-click) Ask.app → choose **Open**
+3. Click **Open** again in the popup
 
-往后双击启动就正常了。
+After that, double-click works normally.
 
-### 方法 B — 系统设置里放行
+### Option B — Allow it from System Settings
 
-如果你已经双击过被拦了:
+If you already double-clicked and got blocked:
 
-1. 打开 **系统设置 → 隐私与安全性**
-2. 滚到底,会看到一条 **"已阻止使用 Ask,因为来自身份不明的开发者"**
-3. 点旁边的 **"仍要打开"**,输入 Mac 密码
-4. 这之后双击就能正常启动
+1. Open **System Settings → Privacy & Security**
+2. Scroll to the bottom — you'll see **"Ask was blocked because it is from an unidentified developer"**
+3. Click **Open Anyway**, enter your Mac password
+4. After this, double-click works fine
 
-### 方法 C — 命令行(给程序员)
+### Option C — Command line (for the terminal-fluent)
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Ask.app
 ```
 
-清掉隔离属性,从此双击直接通,不再被拦。
+Strips the quarantine attribute — double-click works forever after.
 
-> ⚠️ 这套流程对**所有非签名 / 非 Mac App Store 的 Mac 软件**都适用,不是 Ask 独有的限制。
+> ⚠️ This applies to **every unsigned / non-Mac-App-Store Mac app**, not just Ask.
 
 ---
 
-## 🧪 开发 / 调试模式
+## 🧪 Dev / debug mode
 
 ```bash
 git clone https://github.com/birdindasky/ask-mac.git
@@ -134,164 +136,163 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python run.py
-# 浏览器打开 http://127.0.0.1:8870
+# open http://127.0.0.1:8870 in your browser
 ```
 
-开发模式下数据落在 `~/.ask-dev/`,key 走 JSON 兜底而不是钥匙串(方便 reset)。
+In dev mode data lands in `~/.ask-dev/` and keys fall back to JSON instead of the keychain (handy for resets).
 
 ---
 
-## 🎭 四种模式
+## 🎭 The four modes
 
-| 模式 | 快捷键 | 说明 |
+| Mode | Shortcut | What it does |
 |---|---|---|
-| **单聊 Chat** | ⌘1 | 选 1 个模型,正常多轮对话 |
-| **对比 Compare** | ⌘2 | 选 2 个模型,同一问题两边并行流式输出 |
-| **辩论 Debate** | ⌘3 | 主辩 + 反方(或对称),1–4 轮,可暂停可采纳 |
-| **求共识 Discuss** ✨ | ⌘4 | 协议式 6 字段,双方互相修正,**自动判共识** |
+| **Chat** | ⌘1 | Pick one model, normal multi-turn chat |
+| **Compare** | ⌘2 | Pick two models, same prompt streams to both in parallel |
+| **Debate** | ⌘3 | Lead + Critic (or symmetric), 1–4 rounds, pausable, adoptable |
+| **Discuss** ✨ | ⌘4 | Protocol-style 6-field exchange, sides correct each other, **auto-detects consensus** |
 
 ---
 
-## 🌐 联网搜索(可选)
+## 🌐 Web search (optional)
 
-进 ⚙️ 设置 → "联网搜索",挑一家填 key 即可。
+Open ⚙️ Settings → "Web Search", pick a backend, paste the key — done.
 
-| 后端 | 注册 | 特点 |
+| Backend | Sign up | Notes |
 |---|---|---|
-| **Tavily** | [tavily.com](https://tavily.com) | RAG 专用,带摘要,免费 1000/月 |
-| **Exa** | [exa.ai](https://exa.ai) | 神经搜索,擅长找深度内容 |
-| **Brave Search** | [api.search.brave.com](https://api.search.brave.com) | 独立索引,免费 2000/月 |
-| **Serper.dev** | [serper.dev](https://serper.dev) | Google 结果,极快,免费 2500 |
-| **Jina Search** | [jina.ai/reader](https://jina.ai/reader) | 返回 markdown,LLM 友好 |
-| **博查 Bocha** | [bochaai.com](https://bochaai.com) | 国内 AI 搜索,中文优化 |
+| **Tavily** | [tavily.com](https://tavily.com) | Built for RAG, returns summaries, free 1000/month |
+| **Exa** | [exa.ai](https://exa.ai) | Neural search, great at digging up deep content |
+| **Brave Search** | [api.search.brave.com](https://api.search.brave.com) | Independent index, free 2000/month |
+| **Serper.dev** | [serper.dev](https://serper.dev) | Google results, super fast, free 2500 |
+| **Jina Search** | [jina.ai/reader](https://jina.ai/reader) | Returns markdown, LLM-friendly |
+| **Bocha** | [bochaai.com](https://bochaai.com) | China-based AI search, optimized for Chinese |
 
-只配一家就够用。任意一家都和所有 LLM provider 兼容,流程是:**问题 → 搜索后端 → 拿前 N 条 → 拼 system 上下文 → 喂 LLM**。模型自己不需要懂 search tool 协议。
-
----
-
-## 🔌 订阅 CLI 模式(可选)
-
-如果你已经在终端登录了 Claude Code 或 OpenAI Codex 订阅,可以直接用 CLI 跑:
-
-- 设置页选 **Claude CLI(订阅)** 或 **OpenAI Codex CLI(订阅)** 模板,**不需要填 key**
-- 程序会以子进程方式调用 `claude` / `codex`,**已自动 scrub** `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `*_BASE_URL` 等所有可能让 CLI 静默走 API 计费的环境变量
-
-> 前提:本机已能直接在终端运行 `claude` 或 `codex` 并完成订阅登录。
+One backend is enough. Any of them works with every LLM provider — the flow is: **prompt → search backend → top-N hits → glued into the system context → fed to the LLM**. The model itself doesn't need to understand any search-tool protocol.
 
 ---
 
-## 🔧 自定义网关 / 自建 OneAPI
+## 🔌 Subscription CLI mode (optional)
 
-设置页选"OneAPI / NewAPI 自建"或"自定义 OpenAI 兼容"模板,填:
+If you're already logged into a Claude Code or OpenAI Codex subscription in your terminal, you can run them as CLIs directly:
 
-- `base_url`:例如 `http://127.0.0.1:3000/v1`
-- `api_key`:你网关签发的 key
-- 模型列表:每行一个,网关里 enable 的 model id
+- In Settings, pick the **Claude CLI (subscription)** or **OpenAI Codex CLI (subscription)** template — **no API key needed**
+- Ask spawns `claude` / `codex` as a subprocess with all sneaky billing-leak env vars **already scrubbed** (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `*_BASE_URL`, etc.)
+
+> Prerequisite: you can already run `claude` or `codex` in your terminal and you're signed into the subscription.
 
 ---
 
-## ⚙️ 端口 / 数据目录定制
+## 🔧 Custom gateway / self-hosted OneAPI
 
-环境变量(在源码模式下生效;.app 模式直接走默认):
+In Settings, pick "OneAPI / NewAPI self-hosted" or "Custom OpenAI-compatible", then fill in:
 
-| 变量 | 默认 | 说明 |
+- `base_url`: e.g. `http://127.0.0.1:3000/v1`
+- `api_key`: the key your gateway issued
+- Model list: one per line, the model IDs your gateway has enabled
+
+---
+
+## ⚙️ Port / data directory customization
+
+Environment variables (active in source mode; the .app uses defaults):
+
+| Variable | Default | Notes |
 |---|---|---|
-| `MLC_HOST` | `127.0.0.1` | uvicorn 监听地址 |
-| `MLC_PORT` | `8870` | 端口 |
-| `MLC_DATA_DIR` | dev `~/.ask-dev/` <br/> .app `~/Library/Application Support/Ask/` | 配置 + 数据库 |
-| `MLC_LOG_DIR` | dev `~/.ask-dev/logs/` <br/> .app `~/Library/Logs/Ask/` | 日志目录 |
-| `MLC_CLI_TIMEOUT` | `120` | CLI 单次请求超时(秒) |
-| `MLC_PACKAGED` | `0` | `1` 强制走 .app 路径(测试用) |
-| `MLC_FORCE_KEYCHAIN` | `0` | `1` 在 dev 模式也走钥匙串 |
-| `MLC_RELOAD` | `0` | `1` 启用 uvicorn 热重启 |
+| `MLC_HOST` | `127.0.0.1` | uvicorn bind address |
+| `MLC_PORT` | `8870` | port |
+| `MLC_DATA_DIR` | dev `~/.ask-dev/` <br/> .app `~/Library/Application Support/Ask/` | config + database |
+| `MLC_LOG_DIR` | dev `~/.ask-dev/logs/` <br/> .app `~/Library/Logs/Ask/` | log directory |
+| `MLC_CLI_TIMEOUT` | `120` | per-request CLI timeout (seconds) |
+| `MLC_PACKAGED` | `0` | `1` forces .app paths (testing) |
+| `MLC_FORCE_KEYCHAIN` | `0` | `1` makes dev mode also use the keychain |
+| `MLC_RELOAD` | `0` | `1` enables uvicorn hot reload |
 
 ---
 
-## ✅ 跑测试
+## ✅ Run the tests
 
 ```bash
 source venv/bin/activate
 python -m pytest -q
 ```
 
-涵盖:adapter 注册、env scrub、config 迁移、session/message CRUD、四种模式的 SSE 全流程。**42 个用例**。
+Covers: adapter registration, env scrub, config migrations, session/message CRUD, and full SSE flows for all four modes. **42 cases.**
 
 ---
 
-## 📁 目录结构
+## 📁 Layout
 
 ```
-mac_launcher.py       .app 入口:uvicorn-in-thread + PyWebView + AppKit chrome
-run.py                开发模式入口
-setup.py              py2app 配置
+mac_launcher.py       .app entry: uvicorn-in-thread + PyWebView + AppKit chrome
+run.py                dev-mode entry
+setup.py              py2app config
 Makefile              dev / test / icon / build / dmg / install
 scripts/
-├── build_icon.py     生成 assets/Ask.icns
-└── build_dmg.py      把 dist/Ask.app 打成 .dmg
+├── build_icon.py     generates assets/Ask.icns
+└── build_dmg.py      packages dist/Ask.app into a .dmg
 assets/
-├── Ask.icns          应用图标
-└── Ask.iconset/      图标多分辨率素材(自动生成)
+├── Ask.icns          app icon
+└── Ask.iconset/      multi-resolution icon source (auto-generated)
 app/
-├── main.py           FastAPI 装配 / 静态文件路径解析
-├── settings.py       路径与常量(dev vs .app 切换)
+├── main.py           FastAPI wiring / static-file path resolution
+├── settings.py       paths and constants (dev vs .app switch)
 ├── db.py             SQLite + FTS5 messages_fts
-├── config_store.py   config.json 持久化(API key 不进 JSON)
-├── api/              REST + SSE 路由
+├── config_store.py   config.json persistence (API keys never land in JSON)
+├── api/              REST + SSE routes
 ├── modes/            chat / compare / debate / discuss
-├── providers/        各家 adapter + cli_detect 寻 PATH
-├── security/         Keychain 包装 + secrets helpers
-├── search/           联网搜索 6 家 + 引用注入
+├── providers/        per-vendor adapters + cli_detect PATH resolution
+├── security/         keychain wrapper + secrets helpers
+├── search/           6 web-search backends + citation injection
 └── utils/            token_budget / attachments / autostart / notifier / dock_badge
-static/               前端(单页 HTML + Alpine + DaisyUI + Tailwind)
-tests/                pytest 42 个用例
+static/               front end (single-page HTML + Alpine + DaisyUI + Tailwind)
+tests/                42 pytest cases
 ```
 
 ---
 
-## 🎁 v0.2 新增能力
+## 🎁 What's new in v0.2
 
-- **求共识模式** — 第四种 tab,两个模型按"协议式"6 字段格式(`【当前判断】/【把握度】/【支撑】/【被对方修正】/【仍坚持】/【需要对方回应】`)交替发言,后端实时扫【把握度】数字,**双方都 ≥8 + 判断一致 → 提前收敛**;否则跑满 N 轮(默认 3,可改 1–5)。结束后由 A 方追加一条带 `📌 共识` 徽章 + "📋 复制共识"按钮的总结
-- **上下文进度条** — 每轮回答后估算 token 占用,接近 90% 弹"压缩历史"按钮
-- **重新生成** — 在最后一条 assistant 气泡上点 ↻ 重新生成,或在下拉里换模型一键重答
-- **⌘F 全局搜索** — 跨所有会话的 SQLite FTS5 搜索,trigram tokenizer 中文也能命中
-- **附件** — 聊天框支持挂图片或文本文件,4 个模式都能用
-- **欢迎向导** — 首次启动 4 屏引导,帮你 30 秒配好第一个 key
-- **i18n 100% 覆盖** — 中英双语,319 条文案,设置里一键切换
-- **桌面 chrome 完整** — NSMenu / NSStatusItem 托盘 / Dock 徽章 / 系统通知 / 开机启动 / About 面板
-- **关窗不退出** — 关闭主窗口只是隐藏,⌘Tab 可重新唤起;Dock Quit / `killall` / Activity Monitor 都能干净退
-
----
-
-## 🍴 Forking 注意事项
-
-如果你 fork 自己用,**强烈建议**先把以下三处的 `birdindasky` / `Ask` 改成你自己的标识,
-否则两个 app 会争抢同一个 macOS Keychain 条目和数据目录:
-
-- `app/settings.py` 里 `APP_NAME` 和 `BUNDLE_ID`
-- `setup.py` 里 plist 的 `CFBundleName` / `CFBundleDisplayName` / `CFBundleIdentifier`
-- `Makefile` 里 `APP_NAME`(以及随之而来的 `DMG_NAME`)
-
-改完 `make build && make dmg` 出来的就是你自己的独立 .app,数据落在 `~/Library/Application Support/<你的 APP_NAME>/`,与原作者环境互不干扰。
+- **Discuss mode** — a fourth tab where two models alternate in a protocol-style 6-field format (`[Current verdict] / [Confidence] / [Support] / [Corrected by other] / [Still holding] / [Need from other]`). The backend reads `[Confidence]` numbers in real time — **both ≥ 8 + verdicts agree → converge early**; otherwise run the full N rounds (default 3, adjustable 1–5). When it ends, side A appends a summary with a `📌 Consensus` badge and a `📋 Copy consensus` button.
+- **Context progress bar** — token usage estimated after each turn; near 90% you get a "Compact history" button.
+- **Regenerate** — hit ↻ on the last assistant bubble to regenerate, or pick a different model from the dropdown to redo the answer with that model.
+- **⌘F global search** — SQLite FTS5 search across every conversation; trigram tokenizer means Chinese hits work too.
+- **Attachments** — drop images or text files into the chat box, works in all four modes.
+- **Welcome wizard** — 4-screen first-launch tour that gets your first key wired up in 30 seconds.
+- **i18n at 100%** — English & Chinese, 319 strings, switch in Settings.
+- **Full desktop chrome** — NSMenu / NSStatusItem tray / Dock badge / system notifications / launch-at-login / About panel.
+- **Close-without-quit** — closing the main window just hides it; ⌘Tab brings it back; Dock Quit / `killall` / Activity Monitor all clean-shutdown properly.
 
 ---
 
-## ⚠️ 已知限制
+## 🍴 Forking notes
 
-- 图片附件目前以 base64 暂存,LLM 端只看到 `[附件图片: name]` 占位符;真正的视觉理解会在 v0.3 里接入 Anthropic / OpenAI / Gemini 的多模态 API
-- 没接代码签名 / 公证(本地自用,不走 Apple Notary)。要正经分发请配 Developer ID 后改 `setup.py`
-- v0.2 暂未做内置自动更新,版本升级靠重新 `make dmg`
+If you fork this for your own use, **strongly consider** changing `birdindasky` / `Ask` in the three places below to your own identifiers — otherwise two apps will fight over the same macOS Keychain entry and data directory:
+
+- `APP_NAME` and `BUNDLE_ID` in `app/settings.py`
+- `CFBundleName` / `CFBundleDisplayName` / `CFBundleIdentifier` in the plist inside `setup.py`
+- `APP_NAME` (and the resulting `DMG_NAME`) in the `Makefile`
+
+Then `make build && make dmg` produces your own standalone .app, with data in `~/Library/Application Support/<your APP_NAME>/`, fully isolated from the original author's environment.
 
 ---
 
-## 📋 验收清单
+## ⚠️ Known limitations
 
-详细的人肉验收清单见 [`ACCEPTANCE.md`](./ACCEPTANCE.md)。
+- Image attachments are currently base64-buffered and the LLM only sees an `[attached image: name]` placeholder; real vision support lands in v0.3 via Anthropic / OpenAI / Gemini multimodal APIs.
+- No code signing / notarization (built for personal use, no Apple Notary). For real distribution, configure a Developer ID and edit `setup.py`.
+- v0.2 has no built-in auto-update — upgrades mean re-running `make dmg`.
+
+---
+
+## 📋 Acceptance checklist
+
+The hands-on acceptance checklist lives in [`ACCEPTANCE.md`](./ACCEPTANCE.md).
 
 ---
 
 ## 📜 License
 
-[MIT](./LICENSE) © 2026 — 你随便用、改、商用、再分发都行,只是别拿来告我。
+[MIT](./LICENSE) © 2026 — use it, modify it, ship it commercially, redistribute it. Just don't sue me.
 
 ---
 
@@ -299,6 +300,6 @@ tests/                pytest 42 个用例
 
 **Built by [birdindasky](https://github.com/birdindasky) · Designed for vibecoders who hate switching tabs**
 
-如果这个项目帮到你,star 一下 🌟 让作者高兴一会儿
+If this project helped you, drop a star 🌟 to make the author's day.
 
 </div>
