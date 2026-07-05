@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos)
-[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](./CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
@@ -67,6 +67,7 @@
   - **Compare** — same prompt, two models streaming side by side
   - **Debate** — Lead vs Critic, 1–4 rounds, pausable, adoptable mid-flight
   - **Discuss** ✨ new in v0.2 — both sides cross-question via protocol; **once both confidence ≥ 8 and verdicts match, it converges early**
+- 📝 **Export Plan** ✨ new in v0.3 — one button distills a finished discussion into a plan file written straight into your project folder, reviewed by a second model before it lands, with a ready-to-paste kickoff prompt for Claude Code / Codex CLI
 - 🌐 **Connect anything**. Anthropic API + OpenAI API + Gemini + Claude CLI (subscription) + Codex CLI (subscription) + any OpenAI-compatible endpoint
 - 🔍 **Built-in web search**, 6 backends to pick from (Tavily / Exa / Brave / Serper / Jina / Bocha) — decoupled from the LLMs
 - 🔐 **API keys live in macOS Keychain**; the JSON config only stores templates and metadata
@@ -82,7 +83,7 @@
 git clone https://github.com/birdindasky/ask-mac.git
 cd ask-mac
 make build && make dmg
-open dist/Ask-0.2.0.dmg
+open dist/Ask-0.3.0.dmg
 ```
 
 Drag Ask into Applications, launch via Spotlight (`Ask`) — drop in one model's API key in Settings and you're chatting.
@@ -253,6 +254,16 @@ tests/                42 pytest cases
 ```
 
 ---
+
+## 🎁 What's new in v0.3
+
+**Export Plan (出计划)** — Ask used to be a meeting room where conclusions died on the whiteboard: you copied text out by hand and pasted it into a coding agent. Now there's a button.
+
+- **Tag a session with a project** (📁 chip in the toolbar) — exports go straight to that folder; untagged sessions ask at export time.
+- **Writer + reviewer, two models** — pick any two wired models; the writer distills the whole discussion into a 7-section plan (`background / settled conclusions / open disagreements / steps / risks / acceptance / source`), the reviewer checks the draft **against the transcript** — dropped conclusions, open questions passed off as settled, invented content — and can send it back for up to 2 rewrites. Both turns stream into the session as labeled bubbles.
+- **Approved → written** to `<project>/docs/ASK-PLAN-YYYYMMDD-<topic>.md` (never overwrites; the file carries a "do not commit" banner) plus a one-tap **kickoff prompt** with the absolute path — paste it into Claude Code or Codex CLI and the work starts.
+- **Rejected → nothing is written.** The objections land in the session, and in Discuss mode "Continue" feeds them into the next rounds so the models answer the reviewer directly. The fix loop is more discussion, not a defective file.
+- Plan files can only land inside your home directory, one file per export, no git operations ever.
 
 ## 🎁 What's new in v0.2
 

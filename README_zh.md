@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos)
-[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](./CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
@@ -67,6 +67,7 @@
   - **对比** — 同一问题,两家模型并排流式输出
   - **辩论** — 主辩 vs 反方,1–4 轮,中途可暂停可采纳
   - **求共识** ✨v0.2 新增 — 双方按协议互相质询,**把握度都 ≥ 8 且判断一致就提前收敛**
+- 📝 **出计划** ✨ v0.3 新增 — 一键把聊完的讨论提炼成计划书,直接写进你的项目文件夹;落盘前由第二个模型对照原文审稿把关,并附一条可直接粘进 Claude Code / Codex CLI 的开工指令
 - 🌐 **谁都能接**。Anthropic API + OpenAI API + Gemini + Claude CLI(订阅)+ Codex CLI(订阅)+ 任何 OpenAI 兼容地址
 - 🔍 **联网搜索内置**,6 家任选(Tavily / Exa / Brave / Serper / Jina / 博查),与所有 LLM 解耦
 - 🔐 **API key 进 macOS Keychain**,JSON 配置只存模板和元数据
@@ -82,7 +83,7 @@
 git clone https://github.com/birdindasky/ask-mac.git
 cd ask-mac
 make build && make dmg
-open dist/Ask-0.2.0.dmg
+open dist/Ask-0.3.0.dmg
 ```
 
 把 Ask 拖进 Applications,Spotlight 搜 `Ask` 启动 — 设置里填 1 个模型 key 就能用。
@@ -253,6 +254,16 @@ tests/                pytest 42 个用例
 ```
 
 ---
+
+## 🎁 v0.3 新增能力
+
+**出计划** — 以前 Ask 是个会议室,结论只留在白板上:你手动复制、再粘到编码 agent 里。现在有一个按钮。
+
+- **给会话挂项目牌**(工具栏 📁 按钮)— 挂了牌的会话出计划直奔那个文件夹;没挂的导出时再选。
+- **撰稿 + 审稿,双模型把关** — 任选两个已接入的模型;撰稿人把整场讨论提炼成七段计划书(`背景 / 已定结论 / 未定分歧 / 执行计划 / 风险 / 验收 / 来源`),审稿人**对照讨论原文**挑刺 — 漏结论、把没谈拢的写成定论、无中生有 — 最多打回重写两轮。两个角色的发言都作为带标签的气泡流式打在会话里。
+- **过关 → 落盘**到 `项目/docs/ASK-PLAN-日期-主题.md`(永不覆盖重名;文件头带"勿提交入库"横幅),并给一条带绝对路径的**开工指令**一键复制 — 粘进 Claude Code 或 Codex CLI 就能开干。
+- **退稿 → 一个字不写。**退稿意见贴回会话;讨论模式里点「继续讨论」会把意见喂进下一批轮次,让双方正面回应审稿人。修稿的回路是再开会,不是发次品。
+- 计划文件只允许落在你的家目录内,每次导出只写一个文件,永不碰 git。
 
 ## 🎁 v0.2 新增能力
 

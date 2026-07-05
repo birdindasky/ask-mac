@@ -13,10 +13,13 @@ from pathlib import Path
 import dmgbuild
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from app.settings import APP_VERSION  # noqa: E402 — single source of truth
+
 DIST = ROOT / "dist"
 APP_NAME = "Ask"
 APP_PATH = DIST / f"{APP_NAME}.app"
-DMG_PATH = DIST / f"{APP_NAME}-0.2.0.dmg"
+DMG_PATH = DIST / f"{APP_NAME}-{APP_VERSION}.dmg"
 
 
 def main() -> None:
@@ -29,7 +32,7 @@ def main() -> None:
 
     settings = {
         "filename": str(DMG_PATH),
-        "volume_name": f"{APP_NAME} 0.2.0",
+        "volume_name": f"{APP_NAME} {APP_VERSION}",
         "format": "UDZO",
         "size": None,  # auto-fit
         "files": [str(APP_PATH)],
