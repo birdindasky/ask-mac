@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/social-preview.png" alt="Ask — one Mac app, every LLM: watch them argue, make them agree" width="100%" />
+
 # Ask
 
 **A native macOS app for multi-LLM chat, side-by-side compare, debate, and consensus-finding — all in one window.**
