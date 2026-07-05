@@ -68,6 +68,13 @@ function appData() {
     summarizing: false,
     searchOverlay: { open: false, q: '', results: [], loading: false },
 
+    // ---- export plan (出计划) ----
+    exportProjects: [],          // [{name, path}] from /api/export/projects
+    exportDlg: { open: false, projectPath: '', manualPath: '', title: '', writerComposite: '', reviewerComposite: '' },
+    tagDlg: { open: false, projectPath: '', manualPath: '' },
+    exportStage: '',             // live pipeline stage line under the composer
+    _lastExportHint: null,       // ui.last_export from prefs
+
     // ---- init ----
     async init() {
       try { hljs.configure({ ignoreUnescapedHTML: true }); } catch (e) {}
@@ -198,6 +205,7 @@ function appData() {
       this.fontSize = Math.max(13, Math.min(22, r.font_size || 16));
       this.mode = r.last_mode || 'chat';
       this._lastSessionIdHint = r.last_session_id;
+      this._lastExportHint = r.last_export || null;
       this.welcomeDone = !!r.welcome_done;
       this.applyLocale();
     },
@@ -695,6 +703,143 @@ function appData() {
       }
     },
 
+    // ---- export plan (出计划) ----
+    canExport() {
+      return !!this.currentSession
+        && this.messages.some(m => m.role === 'assistant' && (m.content || '').trim());
+    },
+    projectTagPath() {
+      return this.currentSession?.meta?.project_path || '';
+    },
+    projectTagName() {
+      const p = this.projectTagPath();
+      return p ? p.split('/').filter(Boolean).pop() : '';
+    },
+    async loadExportProjects() {
+      try {
+        const r = await fetch('/api/export/projects').then(r => r.json());
+        this.exportProjects = r.projects || [];
+      } catch (e) { this.exportProjects = []; }
+    },
+    // Resolve a dialog's project selection ('__manual__' → free-typed path).
+    _dlgPath(dlg) {
+      return (dlg.projectPath === '__manual__' ? dlg.manualPath : dlg.projectPath).trim();
+    },
+    async openProjectTag() {
+      if (!this.currentSession) return;
+      await this.loadExportProjects();
+      const curr = this.projectTagPath();
+      const known = this.exportProjects.some(p => p.path === curr);
+      this.tagDlg = {
+        open: true,
+        projectPath: curr ? (known ? curr : '__manual__') : '',
+        manualPath: curr && !known ? curr : '',
+      };
+    },
+    async saveProjectTag() {
+      const path = this._dlgPath(this.tagDlg);
+      try {
+        const resp = await fetch(`/api/sessions/${this.currentSession.id}/project`, {
+          method: 'PUT', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ path: path || null }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          this.toast(err.detail || this.t('toast.export.tagFailed', '挂牌失败'), 'error');
+          return;
+        }
+        const r = await resp.json();
+        this.currentSession = r.session;
+        const idx = this.sessions.findIndex(s => s.id === r.session.id);
+        if (idx >= 0) this.sessions[idx] = r.session;
+        this.tagDlg.open = false;
+        this.toast(path
+          ? this.tFmt('toast.export.tagged', `📁 已挂牌: ${this.projectTagName()}`, { name: this.projectTagName() })
+          : this.t('toast.export.untagged', '已摘牌'), 'info');
+      } catch (e) {
+        this.toast(this.t('toast.export.tagFailed', '挂牌失败'), 'error');
+      }
+    },
+    // First-run default line-up: Claude writes, Codex reviews (heterogeneous
+    // vendors); falls back to the first two distinct wired models.
+    _defaultExportPicks() {
+      const valid = (sel) => sel && sel.provider_id && sel.model_id
+        && this.flatModelOptions.some(o => o.value === `${sel.provider_id}::${sel.model_id}`)
+        ? `${sel.provider_id}::${sel.model_id}` : '';
+      let w = valid(this._lastExportHint?.writer);
+      let r = valid(this._lastExportHint?.reviewer);
+      const byKind = (kind) => {
+        const p = this.providers.find(p => p.enabled !== false && p.kind === kind && (p.models || []).length);
+        return p ? `${p.id}::${p.models[0]}` : '';
+      };
+      if (!w) w = byKind('claude_cli') || this.flatModelOptions[0]?.value || '';
+      if (!r) r = byKind('codex_cli')
+        || (this.flatModelOptions.find(o => o.value !== w) || this.flatModelOptions[0])?.value || '';
+      return { w, r };
+    },
+    async openExportDialog() {
+      if (!this.canExport() || this.streaming) return;
+      await this.loadExportProjects();
+      const tagged = this.projectTagPath();
+      const known = this.exportProjects.some(p => p.path === tagged);
+      const picks = this._defaultExportPicks();
+      this.exportDlg = {
+        open: true,
+        projectPath: tagged ? (known ? tagged : '__manual__') : '',
+        manualPath: tagged && !known ? tagged : '',
+        title: '',
+        writerComposite: picks.w,
+        reviewerComposite: picks.r,
+      };
+    },
+    async startExport() {
+      const dlg = this.exportDlg;
+      const path = this._dlgPath(dlg);
+      if (!path) { this.toast(this.t('toast.export.noProject', '先选一个目标项目'), 'error'); return; }
+      const [wp, wm] = (dlg.writerComposite || '').split('::');
+      const [rp, rm] = (dlg.reviewerComposite || '').split('::');
+      if (!wp || !wm || !rp || !rm) { this.toast(this.t('toast.export.noModels', '撰稿人和审稿人都要选好模型'), 'error'); return; }
+      let resolved = path;
+      try {
+        const v = await fetch('/api/export/validate', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ path }),
+        }).then(r => r.json());
+        if (!v.ok) { this.toast(v.reason || this.t('toast.export.badPath', '目标路径不可用'), 'error'); return; }
+        resolved = v.resolved;
+      } catch (e) { this.toast(this.t('toast.export.badPath', '目标路径不可用'), 'error'); return; }
+      dlg.open = false;
+      this.streaming = true;
+      this._dockBadge(true);
+      try {
+        await this.streamSSE(
+          `/api/sessions/${this.currentSession.id}/export-plan`,
+          {
+            project_path: resolved,
+            title: (dlg.title || '').trim() || null,
+            writer: { provider_id: wp, model_id: wm },
+            reviewer: { provider_id: rp, model_id: rm },
+          },
+          this.currentSession.id,
+        );
+      } catch (e) {
+        this.toast(this.tFmt('toast.export.failedTpl', `出计划失败: ${e.message}`, { err: e.message }), 'error');
+      } finally {
+        this.streaming = false;
+        this.streamCtrl = null;
+        this.exportStage = '';
+        this._dockBadge(false);
+        this._maybeNotifyStreamDone();
+        this.refreshBudget();
+      }
+    },
+    async revealPath(path) {
+      try { await fetch('/api/internal/reveal', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ path }),
+      }); } catch (e) {}
+    },
+
     // ---- global search overlay ----
     openSearchOverlay() {
       this.searchOverlay.open = true;
@@ -1150,9 +1295,36 @@ function appData() {
               // Server-side meta will mirror these on next session reload.
               consensus: d.speaker_role === 'consensus',
               checkpoint: d.speaker_role === 'checkpoint',
+              export_role: d.export_role || null,
             }
           });
         }
+      } else if (ev === 'export_status') {
+        if (d.stage === 'chunking') {
+          this.exportStage = this.tFmt('export.stage.chunking', `📦 讨论太长,压缩中 ${d.current}/${d.total}…`, { c: d.current, t: d.total });
+        } else if (d.stage === 'draft') {
+          this.exportStage = this.tFmt('export.stage.draft', `✍️ 撰稿人写第 ${d.attempt} 稿…`, { n: d.attempt });
+        } else if (d.stage === 'review') {
+          this.exportStage = this.tFmt('export.stage.review', `🔍 审稿人审第 ${d.attempt} 稿…`, { n: d.attempt });
+        }
+      } else if (ev === 'export_done') {
+        this.exportStage = '';
+        if (sid === this.currentSession?.id) {
+          const m = this.messages.find(x => x.id === d.message_id);
+          if (m) m.meta = { ...(m.meta || {}), export_result: { status: 'done', path: d.path, spell: d.spell } };
+        }
+        this.toast(this.t('toast.export.done', '✅ 计划书已写入项目'), 'info');
+      } else if (ev === 'export_rejected') {
+        this.exportStage = '';
+        if (sid === this.currentSession?.id) {
+          const m = this.messages.find(x => x.id === d.message_id);
+          if (m) m.meta = { ...(m.meta || {}), export_result: { status: 'rejected' } };
+        }
+        this.toast(this.t('toast.export.rejected', '❌ 审稿未通过,未落盘 — 带着意见继续讨论吧'), 'error');
+      } else if (ev === 'export_error') {
+        this.exportStage = '';
+        const err = (d.error || '').slice(0, 120);
+        this.toast(this.tFmt('toast.export.errTpl', `出计划中断: ${err}`, { err }), 'error', d.error || '');
       } else if (ev === 'stream_end') {
         // Reset per-turn search cache only at the very end.
         this._lastSearchResults = null;

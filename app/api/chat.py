@@ -13,6 +13,7 @@ from ..modes import chat as chat_mode
 from ..modes import compare as compare_mode
 from ..modes import debate as debate_mode
 from ..modes import discuss as discuss_mode
+from ..modes import export_plan as export_mode
 from ..search import GUESS_TAG_INSTRUCTION_ZH, format_for_prompt, get as get_search_backend
 from ..security import get_search_key
 
@@ -79,6 +80,13 @@ class RegenerateBody(BaseModel):
     web_search: bool = False
 
 
+class ExportPlanBody(BaseModel):
+    project_path: str
+    title: str | None = None
+    writer: dict  # {provider_id, model_id}
+    reviewer: dict  # {provider_id, model_id}
+
+
 def _claim_stream(sid: str) -> asyncio.Event:
     """Single-stream-per-session guard. 409 if a stream is already live."""
     if sid in _cancels:
@@ -95,6 +103,7 @@ def _remember_pick(scope: str, payload: dict) -> None:
         "compare": "last_compare_pair",
         "debate": "last_debate",
         "discuss": "last_discuss",
+        "export": "last_export",
     }.get(scope)
     if not key:
         return
@@ -352,6 +361,10 @@ async def post_discuss_continue(sid: str, body: DiscussContinueBody):
     extra_rounds = max(1, min(int(body.extra_rounds or 3), 5))
     cancel = _claim_stream(sid)
 
+    # A fresh export rejection feeds its objections into the next rounds so
+    # the sides answer the reviewer's points directly.
+    review_note = export_mode.pending_review_note(sid)
+
     async def _gen():
         try:
             # Continue uses the original topic for any new web search context.
@@ -363,6 +376,41 @@ async def post_discuss_continue(sid: str, body: DiscussContinueBody):
                 sid, side_a, side_b,
                 extra_rounds=extra_rounds, cancel_event=cancel,
                 web_context=web_ctx, web_sources=web_sources,
+                review_note=review_note,
+            ):
+                yield ev
+        finally:
+            _cancels.pop(sid, None)
+
+    return StreamingResponse(_wrap(_gen()), media_type="text/event-stream")
+
+
+@router.post("/sessions/{sid}/export-plan")
+async def post_export_plan(sid: str, body: ExportPlanBody):
+    """Distill the session into a plan file (docs/DESIGN-EXPORT-PLAN.md)."""
+    if not db.get_session(sid):
+        raise HTTPException(404, "session not found")
+    resolved, reason = export_mode.validate_project_path(body.project_path)
+    if resolved is None:
+        raise HTTPException(400, reason)
+    writer = {
+        "provider_instance": _provider(body.writer["provider_id"]),
+        "model_id": body.writer["model_id"],
+    }
+    reviewer = {
+        "provider_instance": _provider(body.reviewer["provider_id"]),
+        "model_id": body.reviewer["model_id"],
+    }
+    cancel = _claim_stream(sid)
+    _remember_pick("export", {
+        "writer": {"provider_id": body.writer["provider_id"], "model_id": body.writer["model_id"]},
+        "reviewer": {"provider_id": body.reviewer["provider_id"], "model_id": body.reviewer["model_id"]},
+    })
+
+    async def _gen():
+        try:
+            async for ev in export_mode.run_export(
+                sid, str(resolved), body.title, writer, reviewer, cancel_event=cancel,
             ):
                 yield ev
         finally:

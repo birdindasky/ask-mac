@@ -39,3 +39,28 @@ async def post_dock_badge(payload: DockBadgeBody):
 async def post_notify(payload: NotifyBody):
     delivered = notifier.notify(payload.title, payload.body)
     return {"ok": True, "delivered": delivered}
+
+
+class RevealBody(BaseModel):
+    path: str
+
+
+@router.post("/reveal")
+async def post_reveal(payload: RevealBody):
+    """Reveal an exported plan file in Finder (`open -R`). Restricted to
+    existing files under $HOME so the endpoint can't be used to poke around."""
+    import subprocess
+    from pathlib import Path
+
+    try:
+        p = Path(payload.path).expanduser().resolve()
+    except (OSError, RuntimeError):
+        return {"ok": False}
+    home = Path.home().resolve()
+    if not p.is_file() or home not in p.parents:
+        return {"ok": False}
+    try:
+        subprocess.Popen(["/usr/bin/open", "-R", str(p)])
+        return {"ok": True}
+    except OSError:
+        return {"ok": False}

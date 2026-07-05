@@ -303,7 +303,7 @@ async def run_discuss(
 async def continue_discuss(
     session_id: str, side_a: dict, side_b: dict, extra_rounds: int = 3,
     *, cancel_event: asyncio.Event, web_context: str | None = None,
-    web_sources: list[dict] | None = None,
+    web_sources: list[dict] | None = None, review_note: str | None = None,
 ) -> AsyncIterator[dict]:
     """Resume after a checkpoint: rebuild transcript from db, run another
     extra_rounds, then ALWAYS emit another checkpoint. User is the only
@@ -312,6 +312,17 @@ async def continue_discuss(
     if not topic:
         yield {"event": "fatal", "data": {"error": "no prior discuss topic in this session"}}
         return
+
+    # Export-plan rejection feedback: inject as a synthetic non-a/b turn so
+    # both sides receive it as context ("[第三方审稿人]: …"). In-memory only —
+    # the reviewer's message is already persisted, and rebuild_transcript
+    # ignores non-a/b roles, so this never double-injects on later batches.
+    if review_note:
+        transcript.append({
+            "speaker_role": "review",
+            "label": "第三方审稿人",
+            "content": "以下是对你们当前共识的退稿意见,请在接下来的轮次里正面回应:\n" + review_note,
+        })
 
     rounds = max(1, min(int(extra_rounds or 3), 5))
     a_label = side_a.get("label") or "A 方"

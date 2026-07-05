@@ -13,6 +13,7 @@ from . import db, settings
 from .api import admin as admin_api
 from .api import budget as budget_api
 from .api import chat as chat_api
+from .api import export as export_api
 from .api import internal as internal_api
 from .api import providers as providers_api
 from .api import sessions as sessions_api
@@ -93,6 +94,7 @@ app.include_router(chat_api.router)
 app.include_router(ui_prefs_api.router)
 app.include_router(web_search_api.router)
 app.include_router(budget_api.router)
+app.include_router(export_api.router)
 app.include_router(admin_api.router)
 app.include_router(internal_api.router)
 

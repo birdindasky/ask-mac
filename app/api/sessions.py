@@ -56,6 +56,34 @@ async def update_session(sid: str, body: SessionUpdate):
     return {"session": sess}
 
 
+class ProjectTagBody(BaseModel):
+    path: str | None = None
+
+
+@router.put("/{sid}/project")
+async def set_session_project(sid: str, body: ProjectTagBody):
+    """Set or clear the session's project tag (meta.project_path).
+
+    Merges server-side: plain PUT /{sid} replaces meta wholesale, which would
+    clobber unrelated keys if the frontend raced a stale copy.
+    """
+    sess = db.get_session(sid)
+    if not sess:
+        raise HTTPException(404, "session not found")
+    path = (body.path or "").strip()
+    meta = dict(sess.get("meta") or {})
+    if path:
+        from ..modes import export_plan
+        resolved, reason = export_plan.validate_project_path(path)
+        if resolved is None:
+            raise HTTPException(400, reason)
+        meta["project_path"] = str(resolved)
+    else:
+        meta.pop("project_path", None)
+    sess = db.update_session(sid, meta=meta)
+    return {"session": sess}
+
+
 @router.delete("/{sid}")
 async def delete_session(sid: str):
     if not db.delete_session(sid):

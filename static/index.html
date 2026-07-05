@@ -218,6 +218,29 @@
               <div class="ml-auto flex items-center gap-3 text-xs opacity-70">
                 <button
                   type="button"
+                  x-show="currentSession"
+                  class="btn btn-sm btn-ghost gap-1"
+                  @click="openProjectTag()"
+                  :title="projectTagPath() || t('export.tag.title','给这场讨论挂一个项目牌,出计划直奔那个文件夹')"
+                  :aria-label="t('export.tag.aria','设置项目牌')"
+                >
+                  <span aria-hidden="true">📁</span>
+                  <span x-text="projectTagName() || t('export.tag.empty','挂项目')"></span>
+                </button>
+                <button
+                  type="button"
+                  x-show="currentSession"
+                  class="btn btn-sm btn-accent gap-1"
+                  @click="openExportDialog()"
+                  :disabled="streaming || !canExport()"
+                  :title="t('export.button.title','把这场讨论提炼成计划书,写进项目文件夹(撰稿+审稿双模型把关)')"
+                  :aria-label="t('export.button.aria','出计划')"
+                >
+                  <span aria-hidden="true">📝</span>
+                  <span x-text="t('export.button','出计划')"></span>
+                </button>
+                <button
+                  type="button"
                   :class="['btn btn-sm gap-1', webSearchOn ? 'btn-primary' : 'btn-ghost']"
                   @click="toggleWebSearch()"
                   :aria-pressed="webSearchOn"
@@ -259,6 +282,9 @@
                           <span x-show="m.meta?.summary" class="badge badge-info badge-xs" :title="t('bubble.badge.summary.title','历史摘要 — 长会话压缩后的合成消息')" x-text="t('bubble.badge.summary','📦 摘要')"></span>
                           <span x-show="m.meta?.consensus" class="badge badge-success badge-xs" :title="t('bubble.badge.consensus.title','讨论结束,A 方汇总的最终共识')" x-text="t('bubble.badge.consensus','📌 共识')"></span>
                           <span x-show="m.meta?.checkpoint" class="badge badge-warning badge-xs" :title="t('bubble.badge.checkpoint.title','跑完一批轮次没有自动收敛,A 方先汇总进度,等你决定继续还是收尾')" x-text="t('bubble.badge.checkpoint','⏸ 进度')"></span>
+                          <span x-show="m.meta?.export_role === 'writer'" class="badge badge-info badge-xs" :title="t('export.badge.writer.title','撰稿人:把整场讨论提炼成计划书草稿')" x-text="t('export.badge.writer','✍️ 撰稿')"></span>
+                          <span x-show="m.meta?.export_role === 'reviewer'" class="badge badge-secondary badge-xs" :title="t('export.badge.reviewer.title','审稿人:对照讨论原文给草稿挑刺,过了才落盘')" x-text="t('export.badge.reviewer','🔍 审稿')"></span>
+                          <span x-show="m.meta?.export_role === 'result'" class="badge badge-accent badge-xs" x-text="t('export.badge.result','📝 出计划')"></span>
                           <button
                             x-show="m.meta?.consensus"
                             class="btn btn-success btn-xs ml-auto"
@@ -317,6 +343,23 @@
                           <div class="banner-text">
                             <div class="banner-title" x-text="t('bubble.banner.checkpoint.title','阶段总结')"></div>
                             <div class="banner-sub" x-text="extractSummary(m.content) || t('bubble.banner.checkpoint.sub','还没收尾,你来决定继续讨论还是出最终共识')"></div>
+                          </div>
+                        </div>
+                        <div x-show="m.meta?.export_result?.status === 'done'" class="banner banner-consensus">
+                          <span class="banner-icon" aria-hidden="true">📝</span>
+                          <div class="banner-text">
+                            <div class="banner-title" x-text="t('export.banner.done.title','计划书已写入项目')"></div>
+                            <div class="banner-sub flex items-center gap-2 flex-wrap">
+                              <button class="btn btn-success btn-xs" @click="copyText(m.meta.export_result.spell)" :aria-label="t('export.banner.copySpell.aria','复制开工咒语')" x-text="t('export.banner.copySpell','📋 复制开工咒语')"></button>
+                              <button class="btn btn-ghost btn-xs" @click="revealPath(m.meta.export_result.path)" :aria-label="t('export.banner.reveal.aria','在 Finder 中显示计划书文件')" x-text="t('export.banner.reveal','📂 在 Finder 显示')"></button>
+                            </div>
+                          </div>
+                        </div>
+                        <div x-show="m.meta?.export_result?.status === 'rejected'" class="banner banner-checkpoint">
+                          <span class="banner-icon" aria-hidden="true">🔍</span>
+                          <div class="banner-text">
+                            <div class="banner-title" x-text="t('export.banner.rejected.title','审稿未通过,未落盘')"></div>
+                            <div class="banner-sub" x-text="mode === 'discuss' ? t('export.banner.rejected.subDiscuss','退稿意见已贴在上面 — 点「继续讨论」让双方回应,谈拢后再出一次计划') : t('export.banner.rejected.sub','退稿意见已贴在上面 — 接着聊,把没谈拢的谈拢,再出一次计划')"></div>
                           </div>
                         </div>
 
@@ -388,7 +431,7 @@
                 </div>
               </template>
 
-              <div x-show="streaming" class="text-xs opacity-60 italic" x-text="t('composer.streaming','⏳ 正在输出…')"></div>
+              <div x-show="streaming" class="text-xs opacity-60 italic" x-text="exportStage || t('composer.streaming','⏳ 正在输出…')"></div>
             </div>
 
             <!-- Budget bar -->
@@ -952,6 +995,95 @@
     </dialog>
 
     <!-- Confirm delete -->
+    <!-- Export plan dialog (出计划) -->
+    <dialog class="modal" :class="{'modal-open': exportDlg.open}" @close="exportDlg.open=false" :aria-label="t('export.dlg.aria','出计划')">
+      <div class="modal-box max-w-2xl">
+        <h3 class="font-bold text-lg mb-1" x-text="t('export.dlg.title','📝 出计划')"></h3>
+        <p class="text-sm opacity-70 mb-4" x-text="t('export.dlg.sub','撰稿人把整场讨论提炼成计划书,审稿人对照原文挑刺,过关才写进项目。全程在会话里可见。')"></p>
+
+        <div class="form-control mb-3">
+          <label class="label" for="export-project"><span class="label-text" x-text="t('export.dlg.project','写到哪个项目')"></span></label>
+          <select id="export-project" class="select select-bordered w-full" x-model="exportDlg.projectPath">
+            <option value="" x-text="t('export.dlg.projectPick','选一个项目…')"></option>
+            <template x-for="p in exportProjects" :key="p.path">
+              <option :value="p.path" x-text="p.name"></option>
+            </template>
+            <option value="__manual__" x-text="t('export.dlg.projectManual','其他文件夹(手动输路径)…')"></option>
+          </select>
+          <input
+            x-show="exportDlg.projectPath === '__manual__'"
+            type="text" class="input input-bordered w-full mt-2"
+            :placeholder="t('export.dlg.manualPlaceholder','例如 ~/Projects/我的项目')"
+            x-model="exportDlg.manualPath"
+            :aria-label="t('export.dlg.manualAria','手动输入项目路径')"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div class="form-control">
+            <label class="label" for="export-writer"><span class="label-text" x-text="t('export.dlg.writer','✍️ 撰稿人(写计划书)')"></span></label>
+            <select id="export-writer" class="select select-bordered w-full" x-model="exportDlg.writerComposite">
+              <option value="" x-text="t('picker.pick','选一个模型')"></option>
+              <template x-for="opt in flatModelOptions" :key="'w-'+opt.value">
+                <option :value="opt.value" x-text="opt.label"></option>
+              </template>
+            </select>
+          </div>
+          <div class="form-control">
+            <label class="label" for="export-reviewer"><span class="label-text" x-text="t('export.dlg.reviewer','🔍 审稿人(对照原文挑刺)')"></span></label>
+            <select id="export-reviewer" class="select select-bordered w-full" x-model="exportDlg.reviewerComposite">
+              <option value="" x-text="t('picker.pick','选一个模型')"></option>
+              <template x-for="opt in flatModelOptions" :key="'r-'+opt.value">
+                <option :value="opt.value" x-text="opt.label"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs opacity-60 mb-3" x-text="t('export.dlg.reviewerHint','建议撰稿和审稿用不同厂家的模型 — 同门容易一个鼻孔出气。')"></p>
+
+        <div class="form-control mb-4">
+          <label class="label" for="export-title"><span class="label-text" x-text="t('export.dlg.docTitle','计划书主题(可不填,自动用会话名)')"></span></label>
+          <input id="export-title" type="text" class="input input-bordered w-full"
+            :placeholder="t('export.dlg.docTitlePlaceholder','例如:记忆模块重构')" x-model="exportDlg.title" />
+        </div>
+
+        <div class="modal-action">
+          <button class="btn btn-ghost" @click="exportDlg.open=false" x-text="t('export.dlg.cancel','取消')"></button>
+          <button class="btn btn-accent" @click="startExport()" x-text="t('export.dlg.go','开始出计划')"></button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button @click="exportDlg.open=false">close</button></form>
+    </dialog>
+
+    <!-- Project tag dialog (挂牌) -->
+    <dialog class="modal" :class="{'modal-open': tagDlg.open}" @close="tagDlg.open=false" :aria-label="t('export.tagDlg.aria','项目牌')">
+      <div class="modal-box max-w-md">
+        <h3 class="font-bold text-lg mb-1" x-text="t('export.tagDlg.title','📁 项目牌')"></h3>
+        <p class="text-sm opacity-70 mb-4" x-text="t('export.tagDlg.sub','挂上项目牌后,这场讨论出计划时直奔该项目文件夹。')"></p>
+        <div class="form-control mb-4">
+          <select class="select select-bordered w-full" x-model="tagDlg.projectPath" :aria-label="t('export.tagDlg.pickAria','选择项目')">
+            <option value="" x-text="t('export.tagDlg.none','不挂牌')"></option>
+            <template x-for="p in exportProjects" :key="'tag-'+p.path">
+              <option :value="p.path" x-text="p.name"></option>
+            </template>
+            <option value="__manual__" x-text="t('export.dlg.projectManual','其他文件夹(手动输路径)…')"></option>
+          </select>
+          <input
+            x-show="tagDlg.projectPath === '__manual__'"
+            type="text" class="input input-bordered w-full mt-2"
+            :placeholder="t('export.dlg.manualPlaceholder','例如 ~/Projects/我的项目')"
+            x-model="tagDlg.manualPath"
+            :aria-label="t('export.dlg.manualAria','手动输入项目路径')"
+          />
+        </div>
+        <div class="modal-action">
+          <button class="btn btn-ghost" @click="tagDlg.open=false" x-text="t('export.dlg.cancel','取消')"></button>
+          <button class="btn btn-primary" @click="saveProjectTag()" x-text="t('export.tagDlg.save','保存')"></button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button @click="tagDlg.open=false">close</button></form>
+    </dialog>
+
     <dialog class="modal" :class="{'modal-open': confirmModal.show}">
       <div class="modal-box">
         <h3 class="font-bold text-lg" x-text="confirmModal.title"></h3>
