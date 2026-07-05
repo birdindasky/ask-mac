@@ -135,14 +135,31 @@ def _slugify(text: str) -> str:
     return text[:40] or "plan"
 
 
+class ExportPathError(Exception):
+    """Write target failed a safety re-check at write time."""
+
+
 def _target_file(project: Path, slug: str, when: datetime) -> Path:
+    """Pick the write target inside <project>/docs, symlink-hardened.
+
+    validate_project_path() vets the project root, but the actual write goes
+    into docs/ — if that component is a symlink, open() would follow it right
+    past the $HOME boundary. So: resolve docs after mkdir, require it to be
+    the real <project>/docs directory, and build the filename on the resolved
+    base so a post-check symlink swap can't redirect the write.
+    """
     docs = project / "docs"
     docs.mkdir(exist_ok=True)
+    real_docs = docs.resolve()
+    if real_docs != project.resolve() / "docs":
+        raise ExportPathError(
+            "项目的 docs 不是真实目录(可能是符号链接指向了别处),拒绝写入"
+        )
     base = f"ASK-PLAN-{when:%Y%m%d}-{slug}"
-    candidate = docs / f"{base}.md"
+    candidate = real_docs / f"{base}.md"
     i = 2
     while candidate.exists():
-        candidate = docs / f"{base}-{i}.md"
+        candidate = real_docs / f"{base}-{i}.md"
         i += 1
     return candidate
 
@@ -189,13 +206,29 @@ def _split_chunks(text: str, size: int = CHUNK_SIZE_CHARS) -> list[str]:
 # ---------------------------------------------------------------- verdict
 
 def parse_verdict(text: str) -> tuple[bool, str]:
-    """Returns (passed, issues). Missing verdict line is reject-safe."""
-    match = _VERDICT_RE.search(text or "")
+    """Returns (passed, issues). Missing verdict line is reject-safe.
+
+    Only the first 5 lines are searched. The reviewer prompt embeds both
+    literal verdict tokens, and re-export transcripts can quote earlier
+    verdicts — an unanchored search over the whole reply could pick up a
+    quoted 【裁决】通过 and silently pass a plan the reviewer just rejected.
+    A verdict buried past line 5 counts as missing → reject → rewrite loop,
+    which fails safe.
+    """
+    stripped = (text or "").replace("\r\n", "\n").strip()
+    # split("\n") (not splitlines) so head is an exact prefix of stripped and
+    # match.end() maps 1:1 — splitlines would also split on exotic separators
+    # and break the prefix property.
+    head = "\n".join(stripped.split("\n")[:5])
+    match = _VERDICT_RE.search(head)
     if not match:
-        return False, (text or "").strip() or "审稿人未给出【裁决】行,按退稿处理。"
+        return False, stripped or "审稿人未给出【裁决】行,按退稿处理。"
     passed = match.group(1) == _VERDICT_PASS
-    issues = (text[match.end():] if not passed else "").strip()
-    return passed, issues
+    if passed:
+        return True, ""
+    # Everything after the verdict token is the objection list. head is a
+    # prefix of stripped (newlines normalized above), so match.end() maps 1:1.
+    return False, stripped[match.end():].strip()
 
 
 def pending_review_note(session_id: str) -> Optional[str]:
@@ -439,7 +472,18 @@ async def run_export(
 
     when = datetime.now()
     slug = _slugify(title or session.get("title") or "plan")
-    target = _target_file(project, slug, when)
+    # Re-validate at write time: the pipeline runs for minutes between the
+    # initial check and this write, and the target could have been moved or
+    # replaced (validate-once-use-later is exactly how symlink/TOCTOU bites).
+    project_now, reason = validate_project_path(str(project))
+    if project_now is None:
+        yield {"event": "export_error", "data": {"error": f"目标项目在导出过程中失效: {reason}"}}
+        return
+    try:
+        target = _target_file(project_now, slug, when)
+    except ExportPathError as e:
+        yield {"event": "export_error", "data": {"error": str(e)}}
+        return
     body = _banner(session, writer["model_id"], reviewer["model_id"], when) + "\n" + (draft or "") + "\n"
     try:
         with open(target, "x", encoding="utf-8") as f:

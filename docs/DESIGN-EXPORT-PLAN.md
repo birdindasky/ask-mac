@@ -110,6 +110,11 @@ Works verbatim for both Claude Code and Codex CLI.
 
 - Target must resolve to an **existing directory strictly under `$HOME`**,
   and must not be `$HOME` itself, Ask's own data dir, or anything outside.
+- The project path is re-validated **at write time** (the pipeline runs for
+  minutes after the initial check), and `docs/` must resolve to the real
+  `<project>/docs` — a symlinked `docs/` is refused, and filenames are built
+  on the resolved base so a post-check swap can't redirect the write.
+  (Both hardenings from the 2026-07-05 codex review.)
 - Exactly one file is written per export. No overwrites, no deletes.
 - Leak guard is soft by design (user decision 2026-07-05): banner + kickoff
   prompt both forbid committing; `.gitignore` is never touched.

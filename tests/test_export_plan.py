@@ -180,6 +180,49 @@ def test_parse_verdict():
     assert not ok
 
 
+def test_parse_verdict_anchored_to_first_lines():
+    # A quoted historical verdict past line 5 must NOT count (codex finding:
+    # unanchored search could flip a fresh REJECT into a silent PASS).
+    echoed = "回顾历史:\n1\n2\n3\n4\n上一轮审稿人说过【裁决】通过\n【裁决】退稿\n1. 新问题"
+    ok, _ = export_plan.parse_verdict(echoed)
+    assert not ok, "verdict token buried past line 5 must be reject-safe"
+    # Fresh verdict within the first 5 lines still parses, with issues after it.
+    ok, issues = export_plan.parse_verdict("先说明一下。\n【裁决】退稿\n1. 问题甲")
+    assert not ok and "问题甲" in issues
+    ok, issues = export_plan.parse_verdict("\r\n【裁决】通过\r\n备注")
+    assert ok and issues == ""
+
+
+def test_target_file_rejects_docs_symlink(fake_home, tmp_path):
+    # codex finding: docs/ as a symlink pointing outside $HOME let the write
+    # escape the validated boundary. _target_file must refuse to follow it.
+    from datetime import datetime
+    proj = _mk_project(fake_home)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (proj / "docs").symlink_to(outside)
+    with pytest.raises(export_plan.ExportPathError):
+        export_plan._target_file(proj, "x", datetime(2026, 7, 5))
+    assert not list(outside.glob("*")), "nothing may land outside the project"
+
+
+def test_export_pipeline_blocks_docs_symlink(fake_home, session_with_content, monkeypatch, tmp_path):
+    # Full-pipeline version: PASS verdict but docs is a symlink → export_error,
+    # no file anywhere.
+    proj = _mk_project(fake_home)
+    outside = tmp_path / "outside2"
+    outside.mkdir()
+    (proj / "docs").symlink_to(outside)
+    adapter = FakeAdapter([DRAFT], [PASS])
+    monkeypatch.setattr(export_plan, "make_adapter", lambda p: adapter)
+
+    events = _run(session_with_content["id"], proj, adapter)
+    assert not [e for e in events if e["event"] == "export_done"]
+    errs = [e for e in events if e["event"] == "export_error"]
+    assert errs and "docs" in errs[0]["data"]["error"]
+    assert not list(outside.glob("*"))
+
+
 # ---------------------------------------------------------------- pipeline
 
 def test_export_pass_writes_file(fake_home, session_with_content, monkeypatch):
