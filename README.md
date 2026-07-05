@@ -14,6 +14,8 @@
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
+**[⬇️ Download the .dmg](https://github.com/birdindasky/ask-mac/releases/latest)** — prebuilt, no compiling
+
 **English** | [中文](./README_zh.md)
 
 </div>
@@ -29,21 +31,21 @@
 <table>
 <tr>
 <td width="50%" align="center">
-<img src="assets/screenshots/01-chat.png" alt="Chat"/>
+<img src="assets/screenshots/clean/01-chat.png" alt="Chat"/>
 <br/><b>Chat</b> · ⌘1 · Pick one model, chat normally
 </td>
 <td width="50%" align="center">
-<img src="assets/screenshots/02-compare.png" alt="Compare"/>
+<img src="assets/screenshots/clean/02-compare.png" alt="Compare"/>
 <br/><b>Compare</b> · ⌘2 · Same prompt, two models streaming side by side
 </td>
 </tr>
 <tr>
 <td width="50%" align="center">
-<img src="assets/screenshots/03-debate.png" alt="Debate"/>
+<img src="assets/screenshots/clean/03-debate.png" alt="Debate"/>
 <br/><b>Debate</b> · ⌘3 · Lead vs Critic, 1–4 rounds, pause anytime
 </td>
 <td width="50%" align="center">
-<img src="assets/screenshots/04-discuss.png" alt="Discuss"/>
+<img src="assets/screenshots/clean/04-discuss.png" alt="Discuss"/>
 <br/><b>Discuss</b> ✨ · ⌘4 · Protocol-driven cross-correction, auto-detect convergence
 </td>
 </tr>

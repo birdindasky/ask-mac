@@ -14,6 +14,8 @@
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
+**[⬇️ 下载 .dmg 安装包](https://github.com/birdindasky/ask-mac/releases/latest)** — 现成的，免构建
+
 [English](./README.md) | **中文**
 
 </div>
@@ -29,21 +31,21 @@
 <table>
 <tr>
 <td width="50%" align="center">
-<img src="assets/screenshots/01-chat.png" alt="单聊"/>
+<img src="assets/screenshots/clean/01-chat.png" alt="单聊"/>
 <br/><b>单聊</b> · ⌘1 · 选 1 个模型,正常多轮对话
 </td>
 <td width="50%" align="center">
-<img src="assets/screenshots/02-compare.png" alt="对比"/>
+<img src="assets/screenshots/clean/02-compare.png" alt="对比"/>
 <br/><b>对比</b> · ⌘2 · 同一问题,两家并排流式
 </td>
 </tr>
 <tr>
 <td width="50%" align="center">
-<img src="assets/screenshots/03-debate.png" alt="辩论"/>
+<img src="assets/screenshots/clean/03-debate.png" alt="辩论"/>
 <br/><b>辩论</b> · ⌘3 · 主辩 + 反方,1–4 轮可暂停
 </td>
 <td width="50%" align="center">
-<img src="assets/screenshots/04-discuss.png" alt="求共识"/>
+<img src="assets/screenshots/clean/04-discuss.png" alt="求共识"/>
 <br/><b>求共识</b> ✨ · ⌘4 · 协议互相修正,自动判收敛
 </td>
 </tr>
