@@ -595,10 +595,11 @@
 
     <!-- Toasts -->
     <div class="toast toast-top toast-end z-50">
-      <template x-for="t in toasts" :key="t.id">
-        <div :class="['alert', t.kind === 'error' ? 'alert-error' : t.kind === 'warn' ? 'alert-warning' : 'alert-success']">
-          <span x-text="t.text"></span>
-          <button x-show="t.detail" class="btn btn-xs btn-ghost ml-2" @click="openErrorDetail(t)" :aria-label="t('errorDetail.viewDetail','查看详情')" x-text="t('errorDetail.viewDetail','查看详情')"></button>
+      <!-- Loop var must NOT be `t` — it would shadow the i18n t() inside the template. -->
+      <template x-for="toastItem in toasts" :key="toastItem.id">
+        <div :class="['alert', toastItem.kind === 'error' ? 'alert-error' : toastItem.kind === 'warn' ? 'alert-warning' : 'alert-success']">
+          <span x-text="toastItem.text"></span>
+          <button x-show="toastItem.detail" class="btn btn-xs btn-ghost ml-2" @click="openErrorDetail(toastItem)" :aria-label="t('errorDetail.viewDetail','查看详情')" x-text="t('errorDetail.viewDetail','查看详情')"></button>
         </div>
       </template>
     </div>
