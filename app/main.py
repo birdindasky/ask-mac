@@ -54,7 +54,7 @@ def _asset_buster() -> str:
     URL is identical; appending ?v=<hash> guarantees a fresh fetch when we
     ship updated frontend bytes."""
     h = hashlib.sha1()
-    for name in ("app.js", "i18n.js", "style.css", "index.html"):
+    for name in ("app.js", "i18n.js", "vendor-logos.js", "style.css", "index.html"):
         p = STATIC_DIR / name
         if p.is_file():
             h.update(p.read_bytes())

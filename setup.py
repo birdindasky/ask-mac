@@ -18,6 +18,7 @@ DATA_FILES = [
         "static/index.html",
         "static/app.js",
         "static/i18n.js",
+        "static/vendor-logos.js",
         "static/style.css",
     ]),
 ]

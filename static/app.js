@@ -1449,8 +1449,14 @@ function appData() {
       return this._VENDOR_GENERIC;
     },
     vendorStyle(m) { const v = this._vendorFor(m); return `background:${v.grad}`; },
-    vendorGlyph(m) { return this._vendorFor(m).glyph; },
     vendorLabel(m) { return this._vendorFor(m).label; },
+    // Real brand logo (white silhouette) when we have one; otherwise the
+    // monogram glyph. Returned as HTML for x-html.
+    vendorSvg(m) {
+      const v = this._vendorFor(m);
+      const logo = (window.VENDOR_LOGOS && window.VENDOR_LOGOS[v.key]) || '';
+      return logo || `<span class="vg-glyph">${v.glyph || '◆'}</span>`;
+    },
 
     // ---- adopt ----
     async adopt(m) {

@@ -274,7 +274,10 @@ html, body, .navbar, .card, .btn, .input, .textarea, .select { transition: backg
   letter-spacing: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 1px 3px rgba(0, 0, 0, 0.28);
   user-select: none;
+  overflow: hidden;
 }
+.vendor-av svg { width: 14px; height: 14px; display: block; }
+.vendor-av .vg-glyph { font-weight: 700; font-size: 11px; line-height: 1; }
 
 /* Compact toast stack */
 .toast > .alert { box-shadow: 0 4px 18px rgba(0,0,0,0.18); }
