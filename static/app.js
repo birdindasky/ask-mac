@@ -1412,6 +1412,46 @@ function appData() {
       return m.model_id ? `${who} · ${m.model_id}` : who;
     },
 
+    // ---- vendor avatars ----
+    // Identify the brand behind a model and give it a glass gradient chip.
+    // Matching is by model-id first (survives aggregators like OpenRouter /
+    // SiliconFlow that serve other vendors' models), then provider name.
+    // Chinese vendors use a single recognizable CJK glyph; the user reads
+    // 「智 / 通 / 火 / 硅」faster than any logo.
+    _VENDORS: [
+      { key: 'anthropic', re: /claude|anthropic/,           label: 'Anthropic',   glyph: '✳', grad: 'linear-gradient(135deg,#E9977B,#C9633A)' },
+      { key: 'openai',    re: /gpt|codex|openai|chatgpt|o[134]-/, label: 'OpenAI',  glyph: '❋', grad: 'linear-gradient(135deg,#19C39C,#0B7D63)' },
+      { key: 'gemini',    re: /gemini|palm|bard|google/,     label: 'Google Gemini', glyph: '✦', grad: 'linear-gradient(135deg,#4993F5,#9B72F2)' },
+      { key: 'deepseek',  re: /deepseek/,                    label: 'DeepSeek',    glyph: 'D', grad: 'linear-gradient(135deg,#6E8BFF,#4D6BFE)' },
+      { key: 'glm',       re: /glm|chatglm|zhipu|z-?ai/,     label: '智谱 GLM',    glyph: '智', grad: 'linear-gradient(135deg,#3B6FF2,#2947D9)' },
+      { key: 'qwen',      re: /qwen|qwq|tongyi|dashscope|通义/, label: '通义千问',  glyph: '通', grad: 'linear-gradient(135deg,#7C6CF0,#5B4FD1)' },
+      { key: 'minimax',   re: /minimax|abab/,                label: 'MiniMax',     glyph: 'M', grad: 'linear-gradient(135deg,#FF6B6E,#E8464B)' },
+      { key: 'moonshot',  re: /moonshot|kimi/,               label: 'Moonshot Kimi', glyph: 'K', grad: 'linear-gradient(135deg,#4B4B5C,#1E1E28)' },
+      { key: 'doubao',    re: /doubao|volc|ark|豆包/,        label: '火山 · 豆包', glyph: '豆', grad: 'linear-gradient(135deg,#3A7BFF,#1664FF)' },
+      { key: 'yi',        re: /(^|[^a-z])yi-|01-?ai|零一|yi-large|yi-lightning/, label: '零一万物', glyph: '壹', grad: 'linear-gradient(135deg,#2E6BD6,#1B3F86)' },
+      { key: 'siliconflow', re: /siliconflow|硅基/,          label: '硅基流动',    glyph: '硅', grad: 'linear-gradient(135deg,#7A5CF0,#5B3FD1)' },
+      { key: 'openrouter',  re: /openrouter/,                label: 'OpenRouter',  glyph: 'OR', grad: 'linear-gradient(135deg,#7C7FF5,#5457E0)' },
+      { key: 'together',    re: /together/,                  label: 'Together AI', glyph: 'T', grad: 'linear-gradient(135deg,#3D6BFF,#2B2B45)' },
+      { key: 'groq',        re: /groq/,                      label: 'Groq',        glyph: 'gq', grad: 'linear-gradient(135deg,#FF6A50,#F5391E)' },
+    ],
+    _VENDOR_GENERIC: { key: 'generic', label: '模型', glyph: '◆', grad: 'linear-gradient(135deg,#8A8FA3,#5B6070)' },
+
+    _vendorFor(m) {
+      const hay = `${(m.model_id || '')} ${(m.speaker || '')} ${(m.meta && m.meta.label) || ''}`.toLowerCase();
+      for (const v of this._VENDORS) { if (v.re.test(hay)) return v; }
+      // Fall back to the provider's own name (covers aggregators serving a
+      // model whose id doesn't name its brand).
+      const p = (this.providers || []).find(x => x.id === m.provider_id);
+      if (p) {
+        const pn = (p.name || '').toLowerCase();
+        for (const v of this._VENDORS) { if (v.re.test(pn)) return v; }
+      }
+      return this._VENDOR_GENERIC;
+    },
+    vendorStyle(m) { const v = this._vendorFor(m); return `background:${v.grad}`; },
+    vendorGlyph(m) { return this._vendorFor(m).glyph; },
+    vendorLabel(m) { return this._vendorFor(m).label; },
+
     // ---- adopt ----
     async adopt(m) {
       await fetch(`/api/sessions/${this.currentSession.id}/adopt`, {

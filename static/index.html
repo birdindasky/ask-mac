@@ -277,6 +277,7 @@
                     <div :class="bubbleWrapper(m.role)" :data-message-id="m.id">
                       <div :class="bubbleBox(m)">
                         <div class="text-xs opacity-60 mb-1 flex items-center gap-2 flex-wrap">
+                          <template x-if="m.role === 'assistant'"><span class="vendor-av" :style="vendorStyle(m)" :title="vendorLabel(m)" x-text="vendorGlyph(m)"></span></template>
                           <span x-text="bubbleLabel(m)"></span>
                           <span x-show="m.meta?.web_search" class="badge badge-primary badge-xs" :title="t('bubble.badge.web.title','此回答基于联网检索,引用 [n] 可点击,[推] 是模型推测')" x-text="t('bubble.badge.web','🌐 联网')"></span>
                           <span x-show="m.meta?.summary" class="badge badge-info badge-xs" :title="t('bubble.badge.summary.title','历史摘要 — 长会话压缩后的合成消息')" x-text="t('bubble.badge.summary','📦 摘要')"></span>
@@ -403,6 +404,7 @@
                             <div class="card bg-base-100 border border-base-300">
                               <div class="card-body p-3">
                                 <div class="text-xs opacity-60 mb-1 flex items-center gap-2 flex-wrap">
+                                  <template x-if="row[side]"><span class="vendor-av" :style="vendorStyle(row[side])" :title="vendorLabel(row[side])" x-text="vendorGlyph(row[side])"></span></template>
                                   <span x-text="row[side] ? bubbleLabel(row[side]) : t('bubble.compare.none','(无)')"></span>
                                   <span x-show="row[side]?.meta?.web_search" class="badge badge-primary badge-xs">🌐</span>
                                 </div>
