@@ -2,6 +2,14 @@
 
 ## 0.5.0 — 2026-07-06
 
+### Fixed
+- **Frontend dependencies are now bundled locally** (Tailwind / DaisyUI /
+  Alpine / marked / highlight.js in `static/vendor/`) instead of fetched from
+  a CDN at launch. The app is interactive instantly and works fully offline —
+  previously it was non-interactive for a few seconds while the CDN loaded
+  (and could hang where jsdelivr is slow/blocked), which made buttons like
+  Settings appear dead if clicked too early.
+
 ### Added
 - **One-click self-update.** Settings → 版本与更新 now checks GitHub for a
   newer release, shows the changelog, and updates the app with one button.

@@ -10,6 +10,7 @@ ARM64-only by default — the user's machine is M-series and shipping a
 universal2 build would double bundle size for no benefit.
 """
 from __future__ import annotations
+import glob
 from setuptools import setup
 
 APP = ["mac_launcher.py"]
@@ -21,6 +22,9 @@ DATA_FILES = [
         "static/vendor-logos.js",
         "static/style.css",
     ]),
+    # Locally-bundled frontend deps (Tailwind/DaisyUI/Alpine/marked/highlight)
+    # so the app never depends on a CDN at runtime.
+    ("static/vendor", glob.glob("static/vendor/*")),
 ]
 
 OPTIONS = {

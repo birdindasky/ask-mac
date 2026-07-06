@@ -5,26 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Multi-LLM Chat by Claude</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+  <!-- Frontend deps are bundled locally (static/vendor/), not fetched from a
+       CDN, so the app is interactive instantly and works offline / behind a
+       flaky network — jsdelivr is slow-to-blocked in some regions and the
+       app was non-interactive until it finished loading. -->
+  <script src="/static/vendor/tailwindcss-browser.js"></script>
+  <link href="/static/vendor/daisyui.css" rel="stylesheet" type="text/css" />
+  <link href="/static/vendor/daisyui-themes.css" rel="stylesheet" type="text/css" />
 
   <!-- Both themes loaded; only the one matching effectiveTheme is enabled.
        app.js applyTheme() flips the disabled attribute on these two links. -->
-  <link
-    id="hljs-dark"
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"
-  />
-  <link
-    id="hljs-light"
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css"
-    disabled
-  />
-  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link id="hljs-dark" rel="stylesheet" href="/static/vendor/hljs-github-dark.css" />
+  <link id="hljs-light" rel="stylesheet" href="/static/vendor/hljs-github.css" disabled />
+  <script src="/static/vendor/highlight.min.js"></script>
+  <script src="/static/vendor/marked.min.js"></script>
+  <script defer src="/static/vendor/alpine.min.js"></script>
 
   <link rel="stylesheet" href="/static/style.css" />
 </head>
