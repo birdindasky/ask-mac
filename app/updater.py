@@ -115,9 +115,16 @@ def is_trusted_dmg_url(url: str) -> bool:
         p = urlparse(url or "")
     except ValueError:
         return False
-    host = (p.hostname or "").lower()
-    host_ok = host == "github.com" or host.endswith(".github.com") or host.endswith(".githubusercontent.com")
-    return p.scheme == "https" and host_ok and f"/{GITHUB_REPO}/releases/" in (p.path or "")
+    # Exact host (no *.githubusercontent.com — raw/gist subdomains let any user
+    # serve arbitrary bytes) and a prefix path match (not substring), so only a
+    # real release asset of OUR repo passes. release browser_download_url is
+    # always https://github.com/OWNER/REPO/releases/download/…; urllib follows
+    # the CDN redirect internally, so we never need to trust the redirect host.
+    return (
+        p.scheme == "https"
+        and (p.hostname or "").lower() == "github.com"
+        and (p.path or "").startswith(f"/{GITHUB_REPO}/releases/")
+    )
 
 
 def download_dmg(url: str, dest: Path, on_progress: Optional[Callable[[int, int], None]] = None,
@@ -172,7 +179,11 @@ sleep 0.5
 # anything — never rm the backup while the live app is absent.
 if [ ! -d "$APP_PATH" ] && [ -d "$BAK" ]; then
   echo "[updater] recovering leftover backup"
-  mv "$BAK" "$APP_PATH"
+  if ! mv "$BAK" "$APP_PATH"; then
+    echo "[updater] recovery mv failed; leaving intact backup at $BAK for manual restore, aborting"
+    hdiutil detach "$DMG_VOL" 2>/dev/null
+    exit 1
+  fi
 fi
 rm -rf "$STAGE"
 

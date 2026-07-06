@@ -183,6 +183,10 @@ def test_trusted_dmg_url():
     assert not updater.is_trusted_dmg_url("https://evil.com/birdindasky/ask-mac/releases/x.dmg")   # wrong host
     assert not updater.is_trusted_dmg_url("https://github.com/someone/else/releases/x.dmg")        # wrong repo
     assert not updater.is_trusted_dmg_url("https://github.com.evil.com/birdindasky/ask-mac/releases/x.dmg")
+    # codex re-review: raw/gist subdomains + substring path must NOT pass
+    assert not updater.is_trusted_dmg_url("https://raw.githubusercontent.com/evil/repo/main/birdindasky/ask-mac/releases/x.dmg")
+    assert not updater.is_trusted_dmg_url("https://gist.githubusercontent.com/a/b/birdindasky/ask-mac/releases/x.dmg")
+    assert not updater.is_trusted_dmg_url("https://github.com/evil/repo/x/birdindasky/ask-mac/releases/x.dmg")  # path not prefix
     assert not updater.is_trusted_dmg_url("")
 
 

@@ -1489,10 +1489,8 @@ function appData() {
       this.update.stage = 'downloading';
       this.update.pct = 0;
       try {
-        const resp = await fetch('/api/update/perform', {
-          method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ dmg_url: this.update.info.dmg_url }),
-        });
+        // No body — the server resolves the download URL itself from GitHub.
+        const resp = await fetch('/api/update/perform', { method: 'POST' });
         const reader = resp.body.getReader();
         const dec = new TextDecoder();
         let buf = '';
