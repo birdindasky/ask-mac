@@ -5,7 +5,9 @@
 
 VENV_PY ?= venv312/bin/python
 APP_NAME ?= Ask
-DMG_NAME ?= $(APP_NAME)-0.2.0
+# Version lives in app/settings.py (build_dmg.py reads it); this is echo-only.
+APP_VERSION ?= $(shell $(VENV_PY) -c "from app.settings import APP_VERSION; print(APP_VERSION)" 2>/dev/null || echo unknown)
+DMG_NAME ?= $(APP_NAME)-$(APP_VERSION)
 DIST_DIR ?= dist
 
 .PHONY: help dev test icon build alias dmg install clean nuke
