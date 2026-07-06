@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos)
-[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](./CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
@@ -83,7 +83,7 @@
 git clone https://github.com/birdindasky/ask-mac.git
 cd ask-mac
 make build && make dmg
-open dist/Ask-0.3.0.dmg
+open dist/Ask-0.4.0.dmg
 ```
 
 把 Ask 拖进 Applications,Spotlight 搜 `Ask` 启动 — 设置里填 1 个模型 key 就能用。
@@ -254,6 +254,11 @@ tests/                pytest 42 个用例
 ```
 
 ---
+
+## 🎁 v0.4 新增能力
+
+- **Liquid Glass 玻璃主题** — 暗色主题变成苹果的磨砂玻璃风:近黑底铺彩色光晕、面板全磨砂半透、渐变按钮、干净无尾气泡。四个模式和所有弹窗一起换;浅色主题保持干净,白天用不刺眼。
+- **厂商 logo 头像** — 每条回答都挂上产出它的模型的真 logo(Anthropic / OpenAI / Gemini / DeepSeek / 智谱 / 通义 / Kimi / 豆包 / MiniMax / 零一 / Groq 等)。按模型名认厂,所以中转站也显真身。logo 全部本地内置,不联网拉取。
 
 ## 🎁 v0.3 新增能力
 

@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos)
-[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](./CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
@@ -83,7 +83,7 @@
 git clone https://github.com/birdindasky/ask-mac.git
 cd ask-mac
 make build && make dmg
-open dist/Ask-0.3.0.dmg
+open dist/Ask-0.4.0.dmg
 ```
 
 Drag Ask into Applications, launch via Spotlight (`Ask`) — drop in one model's API key in Settings and you're chatting.
@@ -254,6 +254,11 @@ tests/                42 pytest cases
 ```
 
 ---
+
+## 🎁 What's new in v0.4
+
+- **Liquid Glass theme** — the dark theme becomes Apple's frosted-glass look: a near-black ground lit by colored halos, translucent blurred panels everywhere, gradient buttons, clean tail-less bubbles. All four modes and every dialog inherit it; the light theme stays clean for daytime use.
+- **Vendor brand avatars** — every answer now carries the real logo of the model behind it (Anthropic / OpenAI / Gemini / DeepSeek / GLM / Qwen / Kimi / Doubao / MiniMax / Yi / Groq and more). Identified by model-id, so aggregators still show the true brand. Logos are bundled locally.
 
 ## 🎁 What's new in v0.3
 

@@ -15,7 +15,7 @@ from pathlib import Path
 
 APP_NAME = "Ask"
 BUNDLE_ID = "com.birdindasky.ask"
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 
 
 def _is_packaged() -> bool:

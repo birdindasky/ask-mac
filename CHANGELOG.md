@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 — 2026-07-06
+
+### Added
+- **Liquid Glass dark theme**: the dark theme is reskinned into Apple's
+  frosted-glass look — a near-black ground lit by colored halos, translucent
+  blurred surfaces across every panel (navbar / sidebar / toolbar / composer /
+  cards / dialogs), gradient accent buttons, and tail-less glass bubbles.
+  Pure CSS — all four modes and every dialog inherit it. The light theme is
+  left clean, so "跟随系统" gives a light UI by day and Liquid Glass by night.
+- **Per-vendor brand avatars**: each assistant turn now shows the real brand
+  logo of the model that produced it (Anthropic / OpenAI / Gemini / DeepSeek /
+  GLM / Qwen / Kimi / Doubao / MiniMax / Yi / SiliconFlow / OpenRouter /
+  Together / Groq), rendered white on the vendor's gradient chip. Detection is
+  by model-id first, so aggregators (OpenRouter, SiliconFlow, …) still show the
+  true underlying brand. Unknown vendors fall back to a neutral mark.
+  Logos are bundled locally (static/vendor-logos.js); nothing is fetched at
+  runtime.
+
 ## 0.3.0 — 2026-07-05
 
 ### Added
