@@ -193,6 +193,20 @@ def test_parse_verdict_anchored_to_first_lines():
     assert ok and issues == ""
 
 
+def test_parse_verdict_rule_echo_inside_window():
+    # codex residual: a rule restatement INSIDE the 5-line window quotes both
+    # tokens mid-line; the real verdict line must win, not the echo.
+    echoed = "你回复的第一行必须是:【裁决】通过 或 【裁决】退稿。\n【裁决】退稿\n1. 真实问题"
+    ok, issues = export_plan.parse_verdict(echoed)
+    assert not ok and "真实问题" in issues
+    # Mirror case: echo then a genuine PASS.
+    ok, issues = export_plan.parse_verdict("规则是【裁决】退稿 或 【裁决】通过。\n【裁决】通过")
+    assert ok and issues == ""
+    # A verdict that never opens a line is treated as missing → reject-safe.
+    ok, _ = export_plan.parse_verdict("我认为可以给出【裁决】通过 这样的评价")
+    assert not ok
+
+
 def test_target_file_rejects_docs_symlink(fake_home, tmp_path):
     # codex finding: docs/ as a symlink pointing outside $HOME let the write
     # escape the validated boundary. _target_file must refuse to follow it.

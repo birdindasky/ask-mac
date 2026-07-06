@@ -35,7 +35,9 @@ RESULT_LABEL = "出计划"
 
 _VERDICT_PASS = "通过"
 _VERDICT_REJECT = "退稿"
-_VERDICT_RE = re.compile(r"【裁决】\s*(通过|退稿)")
+# Line-anchored (used with .match): the verdict must open its line, so prose
+# that merely quotes the tokens can't be mistaken for a ruling.
+_VERDICT_LINE_RE = re.compile(r"\s*【裁决】\s*(通过|退稿)")
 
 _WRITER_SYSTEM = (
     "你是「撰稿人」。任务:把一场多模型讨论的完整记录,提炼成一份可以直接指挥"
@@ -216,19 +218,25 @@ def parse_verdict(text: str) -> tuple[bool, str]:
     which fails safe.
     """
     stripped = (text or "").replace("\r\n", "\n").strip()
-    # split("\n") (not splitlines) so head is an exact prefix of stripped and
-    # match.end() maps 1:1 — splitlines would also split on exotic separators
-    # and break the prefix property.
-    head = "\n".join(stripped.split("\n")[:5])
-    match = _VERDICT_RE.search(head)
-    if not match:
+    # Scan only the first 5 lines, accept only lines that START with the
+    # verdict marker, and keep the LAST such line. Rationale (codex review):
+    # reviewers often restate the rules ("第一行必须是:【裁决】通过 或 【裁决】退稿")
+    # before answering — a mid-line quoted token must never win over the
+    # model's own verdict line, and models restate first, answer after.
+    verdict_end = None
+    verdict_token = None
+    offset = 0
+    for line in stripped.split("\n")[:5]:
+        m = _VERDICT_LINE_RE.match(line)
+        if m:
+            verdict_end = offset + m.end()
+            verdict_token = m.group(1)
+        offset += len(line) + 1  # +1 for the "\n" (split guarantees exact offsets)
+    if verdict_token is None:
         return False, stripped or "审稿人未给出【裁决】行,按退稿处理。"
-    passed = match.group(1) == _VERDICT_PASS
-    if passed:
+    if verdict_token == _VERDICT_PASS:
         return True, ""
-    # Everything after the verdict token is the objection list. head is a
-    # prefix of stripped (newlines normalized above), so match.end() maps 1:1.
-    return False, stripped[match.end():].strip()
+    return False, stripped[verdict_end:].strip()
 
 
 def pending_review_note(session_id: str) -> Optional[str]:
@@ -507,4 +515,4 @@ async def run_export(
     yield {"event": "assistant_start", "data": {"message_id": msg["id"], "label": RESULT_LABEL, "speaker": RESULT_LABEL, "export_role": "result"}}
     yield {"event": "assistant_end", "data": {"message_id": msg["id"], "label": RESULT_LABEL, "content": content, "error": None, "cancelled": False, "export_role": "result"}}
     yield {"event": "export_done", "data": {"path": str(target), "spell": spell, "message_id": msg["id"]}}
-    notifier.notify("出计划完成", f"{target.name} 已写入 {project.name}")
+    notifier.notify("出计划完成", f"{target.name} 已写入 {project_now.name}")
