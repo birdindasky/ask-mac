@@ -20,10 +20,11 @@ async def get_check():
 
 
 @router.post("/perform")
-async def post_perform(body: dict):
-    """SSE stream of update progress. The final `relaunching` event is
+async def post_perform():
+    """SSE stream of update progress. The download URL is resolved server-side
+    from GitHub (never from the request body), so this endpoint can't be
+    coaxed into installing arbitrary content. The final `relaunching` event is
     followed by the app quitting (the detached swap script relaunches it)."""
-    dmg_url = (body or {}).get("dmg_url")
 
     async def _gen():
         # Drive the blocking generator on a worker thread, forwarding events.
@@ -33,7 +34,7 @@ async def post_perform(body: dict):
 
         def _run():
             try:
-                for ev in updater.perform_update(dmg_url):
+                for ev in updater.perform_update():
                     loop.call_soon_threadsafe(q.put_nowait, ev)
             finally:
                 loop.call_soon_threadsafe(q.put_nowait, DONE)

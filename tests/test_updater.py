@@ -116,14 +116,17 @@ def _run_swap(script: str, stubbin: Path):
                           env=env, timeout=30)
 
 
+def _mk_bundle(path: Path, mark: str):
+    """A structurally-valid fake .app (has Contents/MacOS + a marker)."""
+    (path / "Contents" / "MacOS").mkdir(parents=True)
+    (path / "MARK").write_text(mark)
+
+
 def test_swap_success_replaces_bundle(tmp_path):
-    apps = tmp_path / "Applications"
-    apps.mkdir()
-    old = apps / "Ask.app"
-    old.mkdir(); (old / "MARK").write_text("old")
+    apps = tmp_path / "Applications"; apps.mkdir()
+    old = apps / "Ask.app"; _mk_bundle(old, "old")
     vol = tmp_path / "Volumes"; vol.mkdir()
-    src = vol / "Ask.app"
-    src.mkdir(); (src / "MARK").write_text("new")
+    src = vol / "Ask.app"; _mk_bundle(src, "new")
 
     # pid 999999 almost certainly doesn't exist → wait loop exits immediately
     script = updater.build_swap_script(999999, old, src, vol, tmp_path / "u.log")
@@ -135,25 +138,75 @@ def test_swap_success_replaces_bundle(tmp_path):
 
 
 def test_swap_failure_restores_backup(tmp_path):
-    apps = tmp_path / "Applications"
-    apps.mkdir()
-    old = apps / "Ask.app"
-    old.mkdir(); (old / "MARK").write_text("old")
+    apps = tmp_path / "Applications"; apps.mkdir()
+    old = apps / "Ask.app"; _mk_bundle(old, "old")
     vol = tmp_path / "Volumes"; vol.mkdir()
     missing_src = vol / "Ask.app"   # does NOT exist → ditto fails
 
     script = updater.build_swap_script(999999, old, missing_src, vol, tmp_path / "u.log")
-    res = _run_swap(script, _stub_bin(tmp_path))
-    # ditto failed early; the original bundle must be untouched.
+    _run_swap(script, _stub_bin(tmp_path))
     assert (old / "MARK").read_text() == "old", "original app preserved on failure"
+
+
+def test_swap_aborts_on_structurally_broken_new_app(tmp_path):
+    # src exists but is NOT a valid bundle (no Contents/MacOS) → must abort
+    # without touching the good old app.
+    apps = tmp_path / "Applications"; apps.mkdir()
+    old = apps / "Ask.app"; _mk_bundle(old, "old")
+    vol = tmp_path / "Volumes"; vol.mkdir()
+    bad = vol / "Ask.app"; bad.mkdir(); (bad / "junk").write_text("x")
+
+    script = updater.build_swap_script(999999, old, bad, vol, tmp_path / "u.log")
+    res = _run_swap(script, _stub_bin(tmp_path))
+    assert res.returncode == 1
+    assert (old / "MARK").read_text() == "old", "old app must survive a broken update"
+
+
+def test_swap_recovers_leftover_backup(tmp_path):
+    # Simulate a prior crashed run: app missing, but a good backup sits at .bak.
+    apps = tmp_path / "Applications"; apps.mkdir()
+    old = apps / "Ask.app"          # intentionally absent
+    bak = apps / ".Ask.app.bak"; _mk_bundle(bak, "recovered")
+    vol = tmp_path / "Volumes"; vol.mkdir()
+    src = vol / "Ask.app"; _mk_bundle(src, "new")
+
+    script = updater.build_swap_script(999999, old, src, vol, tmp_path / "u.log")
+    _run_swap(script, _stub_bin(tmp_path))
+    # Either way the app path must end up present (recovered then updated).
+    assert old.exists(), "app must be restored/installed, never left missing"
+
+
+def test_trusted_dmg_url():
+    ok = "https://github.com/birdindasky/ask-mac/releases/download/v0.5.0/Ask-0.5.0.dmg"
+    assert updater.is_trusted_dmg_url(ok)
+    assert not updater.is_trusted_dmg_url("http://github.com/birdindasky/ask-mac/releases/x.dmg")  # not https
+    assert not updater.is_trusted_dmg_url("https://evil.com/birdindasky/ask-mac/releases/x.dmg")   # wrong host
+    assert not updater.is_trusted_dmg_url("https://github.com/someone/else/releases/x.dmg")        # wrong repo
+    assert not updater.is_trusted_dmg_url("https://github.com.evil.com/birdindasky/ask-mac/releases/x.dmg")
+    assert not updater.is_trusted_dmg_url("")
+
+
+def test_download_rejects_truncated(monkeypatch, tmp_path):
+    import io
+
+    class _Resp(io.BytesIO):
+        headers = {"Content-Length": "1000"}   # claims 1000 but body is short
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    monkeypatch.setattr(updater.urllib.request, "urlopen",
+                        lambda *a, **k: _Resp(b"only-a-few-bytes"))
+    with pytest.raises(IOError):
+        updater.download_dmg("https://x/y.dmg", tmp_path / "d.dmg")
 
 
 def test_swap_script_has_safety_rails():
     s = updater.build_swap_script(123, Path("/Applications/Ask.app"),
                                   Path("/Volumes/Ask/Ask.app"), Path("/Volumes/Ask"),
                                   Path("/tmp/u.log"))
-    assert "kill -0" in s                      # waits for the app to quit
-    assert ".Ask.app.bak" in s                 # backs up the old bundle
-    assert "restoring backup" in s             # restores on swap failure
-    assert "com.apple.quarantine" in s         # strips quarantine
-    assert "open " in s                        # relaunches
+    assert "kill -9" in s                       # force-quit fallback
+    assert "recovering leftover backup" in s    # crash recovery
+    assert "Contents/MacOS" in s                # verifies the swapped bundle
+    assert "restoring backup" in s              # restores on install failure
+    assert "com.apple.quarantine" in s          # strips quarantine
+    assert "open " in s                         # relaunches

@@ -24,6 +24,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 from typing import Callable, Iterator, Optional
+from urllib.parse import urlparse
 
 from . import settings
 
@@ -105,9 +106,25 @@ def check_for_update(timeout: float = 10.0) -> dict:
 
 # ---------------------------------------------------------------- download
 
+def is_trusted_dmg_url(url: str) -> bool:
+    """Only ever download from our own GitHub release. This is the anchor that
+    keeps the (deliberately quarantine-free) install as trustworthy as the
+    manual "download from the releases page" path — an attacker who reaches the
+    local port still can't point us at their own binary."""
+    try:
+        p = urlparse(url or "")
+    except ValueError:
+        return False
+    host = (p.hostname or "").lower()
+    host_ok = host == "github.com" or host.endswith(".github.com") or host.endswith(".githubusercontent.com")
+    return p.scheme == "https" and host_ok and f"/{GITHUB_REPO}/releases/" in (p.path or "")
+
+
 def download_dmg(url: str, dest: Path, on_progress: Optional[Callable[[int, int], None]] = None,
                  timeout: float = 30.0) -> None:
-    """Stream a DMG to `dest`. urllib download → no com.apple.quarantine."""
+    """Stream a DMG to `dest`. urllib download → no com.apple.quarantine.
+    Verifies completeness against Content-Length so a truncated transfer is an
+    error, not a silently-corrupt install."""
     ctx = ssl.create_default_context()
     req = urllib.request.Request(url, headers={"User-Agent": _UA["User-Agent"]})
     with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
@@ -122,6 +139,8 @@ def download_dmg(url: str, dest: Path, on_progress: Optional[Callable[[int, int]
                 got += len(chunk)
                 if on_progress:
                     on_progress(got, total)
+    if total and got < total:
+        raise IOError(f"下载不完整({got}/{total} 字节)")
 
 
 # ---------------------------------------------------------------- swap script
@@ -139,22 +158,48 @@ SRC_APP={_q(src_app)}
 DMG_VOL={_q(dmg_vol)}
 PARENT={_q(parent)}
 exec >>{_q(log_path)} 2>&1
+STAGE="$PARENT/.Ask.app.new"
+BAK="$PARENT/.Ask.app.bak"
+
 echo "[updater] $(date) waiting for pid $APP_PID"
 kill "$APP_PID" 2>/dev/null
 for i in $(seq 1 80); do kill -0 "$APP_PID" 2>/dev/null || break; sleep 0.5; done
-STAGE="$PARENT/.Ask.app.new"
-BAK="$PARENT/.Ask.app.bak"
-rm -rf "$STAGE" "$BAK"
+kill -9 "$APP_PID" 2>/dev/null   # force-quit if it ignored SIGTERM
+sleep 0.5
+
+# Crash recovery: a prior interrupted run may have left the app renamed to
+# BAK. If the app is missing but a backup exists, restore it before touching
+# anything — never rm the backup while the live app is absent.
+if [ ! -d "$APP_PATH" ] && [ -d "$BAK" ]; then
+  echo "[updater] recovering leftover backup"
+  mv "$BAK" "$APP_PATH"
+fi
+rm -rf "$STAGE"
+
 echo "[updater] staging"
-if ! ditto "$SRC_APP" "$STAGE"; then echo "[updater] stage failed"; hdiutil detach "$DMG_VOL" 2>/dev/null; open "$APP_PATH"; exit 1; fi
+if ! ditto "$SRC_APP" "$STAGE" || [ ! -d "$STAGE/Contents/MacOS" ]; then
+  echo "[updater] staged app missing/broken, aborting (old app untouched)"
+  rm -rf "$STAGE"; hdiutil detach "$DMG_VOL" 2>/dev/null; open "$APP_PATH"; exit 1
+fi
 xattr -dr com.apple.quarantine "$STAGE" 2>/dev/null
-echo "[updater] swapping"
-mv "$APP_PATH" "$BAK" 2>/dev/null
-if mv "$STAGE" "$APP_PATH"; then
-  rm -rf "$BAK"
+
+echo "[updater] backing up current"
+rm -rf "$BAK"
+if [ -d "$APP_PATH" ]; then
+  if ! mv "$APP_PATH" "$BAK"; then
+    echo "[updater] backup failed, aborting (old app intact)"
+    rm -rf "$STAGE"; hdiutil detach "$DMG_VOL" 2>/dev/null; open "$APP_PATH"; exit 1
+  fi
+fi
+
+# APP_PATH is guaranteed gone now → mv won't nest inside a surviving dir.
+echo "[updater] installing"
+if mv "$STAGE" "$APP_PATH" && [ -d "$APP_PATH/Contents/MacOS" ]; then
   echo "[updater] ok"
+  rm -rf "$BAK"
 else
-  echo "[updater] swap failed, restoring backup"
+  echo "[updater] install failed, restoring backup"
+  rm -rf "$APP_PATH"
   [ -d "$BAK" ] && mv "$BAK" "$APP_PATH"
 fi
 hdiutil detach "$DMG_VOL" 2>/dev/null
@@ -171,15 +216,27 @@ def _q(p) -> str:
 
 # ---------------------------------------------------------------- orchestrate
 
-def perform_update(dmg_url: str) -> Iterator[dict]:
+def perform_update() -> Iterator[dict]:
     """Generator yielding progress events; the last real step spawns the
-    detached swapper and asks the app to quit. Caller streams these as SSE."""
+    detached swapper and asks the app to quit. Caller streams these as SSE.
+
+    The download URL is resolved SERVER-SIDE from the current GitHub release —
+    never taken from the caller — so a stray local POST can't point the updater
+    at attacker-hosted content."""
     bundle = _app_bundle_path()
     if bundle is None:
         yield {"stage": "error", "error": "开发模式不支持自更新(仅打包版可用)"}
         return
-    if not dmg_url:
-        yield {"stage": "error", "error": "没有可下载的安装包"}
+    info = check_for_update()
+    if not info.get("ok"):
+        yield {"stage": "error", "error": info.get("error") or "检查更新失败"}
+        return
+    if not info.get("is_newer"):
+        yield {"stage": "error", "error": "已是最新版,无需更新"}
+        return
+    dmg_url = info.get("dmg_url")
+    if not dmg_url or not is_trusted_dmg_url(dmg_url):
+        yield {"stage": "error", "error": "找不到可信的安装包下载地址"}
         return
 
     workdir = Path(tempfile.mkdtemp(prefix="ask-update-"))
