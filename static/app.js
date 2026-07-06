@@ -75,6 +75,9 @@ function appData() {
     exportStage: '',             // live pipeline stage line under the composer
     _lastExportHint: null,       // ui.last_export from prefs
 
+    // ---- self-update ----
+    update: { current: '', checking: false, checked: false, info: null, error: '', updating: false, stage: '', pct: 0, dismissed: false },
+
     // ---- init ----
     async init() {
       try { hljs.configure({ ignoreUnescapedHTML: true }); } catch (e) {}
@@ -94,6 +97,9 @@ function appData() {
         if (exists) await this.selectSession(lastId);
       }
       this._wireMacBridge();
+      // Quietly check for a newer release on launch; surfaces a top banner
+      // only if one exists. Never blocks startup, never nags on failure.
+      this.checkUpdate(true).catch(() => {});
     },
 
     // ---- mac bridge ----
@@ -1456,6 +1462,76 @@ function appData() {
       const v = this._vendorFor(m);
       const logo = (window.VENDOR_LOGOS && window.VENDOR_LOGOS[v.key]) || '';
       return logo || `<span class="vg-glyph">${v.glyph || '◆'}</span>`;
+    },
+
+    // ---- self-update ----
+    async checkUpdate(silent = false) {
+      if (this.update.checking || this.update.updating) return;
+      this.update.checking = true;
+      this.update.error = '';
+      try {
+        const r = await fetch('/api/update/check').then(r => r.json());
+        this.update.current = r.current || this.update.current;
+        this.update.checked = true;
+        if (!r.ok) { this.update.error = silent ? '' : (r.error || '检查更新失败'); this.update.info = null; return; }
+        this.update.info = r;
+        // Surface a top banner on launch only when there's genuinely a newer build.
+        if (silent && r.is_newer) this.update.dismissed = false;
+      } catch (e) {
+        this.update.error = silent ? '' : this.t('toast.update.checkFail', '检查更新失败,请稍后再试');
+      } finally {
+        this.update.checking = false;
+      }
+    },
+    async performUpdate() {
+      if (!this.update.info?.is_newer || !this.update.info?.dmg_url || this.update.updating) return;
+      this.update.updating = true;
+      this.update.stage = 'downloading';
+      this.update.pct = 0;
+      try {
+        const resp = await fetch('/api/update/perform', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ dmg_url: this.update.info.dmg_url }),
+        });
+        const reader = resp.body.getReader();
+        const dec = new TextDecoder();
+        let buf = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let idx;
+          while ((idx = buf.indexOf('\n\n')) >= 0) {
+            const frame = buf.slice(0, idx); buf = buf.slice(idx + 2);
+            const line = frame.split('\n').find(l => l.startsWith('data:'));
+            if (!line) continue;
+            let d = {}; try { d = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
+            if (d.stage === 'error') {
+              this.update.updating = false; this.update.stage = '';
+              this.toast(this.tFmt('toast.update.failTpl', `更新失败:{err}`, { err: d.error || '' }), 'error', d.error || '');
+              return;
+            }
+            this.update.stage = d.stage || this.update.stage;
+            if (typeof d.pct === 'number') this.update.pct = d.pct;
+            // 'relaunching' means the swap script is armed; the app is about to
+            // quit and reopen on the new version. Show a calm final message.
+            if (d.stage === 'relaunching') {
+              this.toast(this.t('toast.update.relaunching', '新版就绪,正在重启 Ask…'), 'info');
+            }
+          }
+        }
+      } catch (e) {
+        this.update.updating = false; this.update.stage = '';
+        this.toast(this.tFmt('toast.update.failTpl', `更新失败:{err}`, { err: e.message }), 'error');
+      }
+    },
+    updateStageText() {
+      const s = this.update.stage;
+      if (s === 'downloading') return this.tFmt('settings.update.stage.downloading', '下载中… {p}%', { p: this.update.pct });
+      if (s === 'mounting') return this.t('settings.update.stage.mounting', '校验安装包…');
+      if (s === 'installing') return this.t('settings.update.stage.installing', '安装中…');
+      if (s === 'relaunching') return this.t('settings.update.stage.relaunching', '即将重启到新版…');
+      return '';
     },
 
     // ---- adopt ----

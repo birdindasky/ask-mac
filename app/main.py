@@ -16,6 +16,7 @@ from .api import chat as chat_api
 from .api import export as export_api
 from .api import internal as internal_api
 from .api import providers as providers_api
+from .api import update as update_api
 from .api import sessions as sessions_api
 from .api import ui_prefs as ui_prefs_api
 from .api import web_search as web_search_api
@@ -95,6 +96,7 @@ app.include_router(ui_prefs_api.router)
 app.include_router(web_search_api.router)
 app.include_router(budget_api.router)
 app.include_router(export_api.router)
+app.include_router(update_api.router)
 app.include_router(admin_api.router)
 app.include_router(internal_api.router)
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 — 2026-07-06
+
+### Added
+- **One-click self-update.** Settings → 版本与更新 now checks GitHub for a
+  newer release, shows the changelog, and updates the app with one button.
+  The app downloads the DMG itself (so macOS doesn't quarantine it), then a
+  detached helper waits for the app to quit, swaps the bundle in /Applications
+  with a backup-and-restore safety net, and relaunches on the new version —
+  no manual drag, no Gatekeeper nag. A dismissible top banner announces a new
+  version on launch. Only active in the packaged .app; dev mode links to the
+  download page instead.
+  - Note: this is the first version *with* the updater — you install it once
+    manually; every release after this one updates in-app.
+
 ## 0.4.0 — 2026-07-06
 
 ### Added

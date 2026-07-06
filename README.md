@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos)
-[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-green.svg)](./CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
@@ -83,7 +83,7 @@
 git clone https://github.com/birdindasky/ask-mac.git
 cd ask-mac
 make build && make dmg
-open dist/Ask-0.4.0.dmg
+open dist/Ask-0.5.0.dmg
 ```
 
 Drag Ask into Applications, launch via Spotlight (`Ask`) — drop in one model's API key in Settings and you're chatting.
@@ -254,6 +254,10 @@ tests/                42 pytest cases
 ```
 
 ---
+
+## 🎁 What's new in v0.5
+
+- **One-click self-update** — Settings → *Version & updates* checks GitHub for a newer release, shows the changelog, and updates the app with one button. It downloads the DMG itself (no Gatekeeper quarantine), swaps the bundle in place with a backup-and-restore safety net, and relaunches — no manual drag. A dismissible banner announces new versions on launch. *You install this version once by hand; every release after updates in-app.*
 
 ## 🎁 What's new in v0.4
 

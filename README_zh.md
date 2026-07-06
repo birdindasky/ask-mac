@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos)
-[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-green.svg)](./CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Made for vibecoders](https://img.shields.io/badge/made%20for-vibecoders-purple.svg)](#)
 
@@ -83,7 +83,7 @@
 git clone https://github.com/birdindasky/ask-mac.git
 cd ask-mac
 make build && make dmg
-open dist/Ask-0.4.0.dmg
+open dist/Ask-0.5.0.dmg
 ```
 
 把 Ask 拖进 Applications,Spotlight 搜 `Ask` 启动 — 设置里填 1 个模型 key 就能用。
@@ -254,6 +254,10 @@ tests/                pytest 42 个用例
 ```
 
 ---
+
+## 🎁 v0.5 新增能力
+
+- **一键自更新** — 设置 →「版本与更新」会检查 GitHub 上的新版本、给你看更新日志、一键更新。App 自己下载安装包(不触发 macOS 拦截),原地替换并带"备份+失败还原"保险,然后自动重启——不用手动拖。启动时顶部有可关闭的新版提示条。*这一版你手动装一次,之后每次发版都在 App 里一键更新。*
 
 ## 🎁 v0.4 新增能力
 

@@ -66,6 +66,19 @@
       </div>
     </header>
 
+    <!-- Update available banner -->
+    <div x-show="update.info?.is_newer && !update.dismissed" x-cloak
+         class="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-base-300 bg-primary/10 text-sm">
+      <span aria-hidden="true">✨</span>
+      <span x-text="tFmt('banner.update.text','有新版本 {v} 可用', {v: update.info?.latest})"></span>
+      <button type="button" class="btn btn-xs btn-primary" @click="openSettings(); settingsTab='behavior'"
+              x-show="update.info?.packaged" x-text="t('banner.update.cta','查看并更新')"></button>
+      <a class="btn btn-xs btn-outline" :href="update.info?.html_url" target="_blank" rel="noopener"
+         x-show="!update.info?.packaged" x-text="t('banner.update.web','去下载页')"></a>
+      <button type="button" class="btn btn-xs btn-ghost ml-auto" @click="update.dismissed=true"
+              :aria-label="t('banner.update.dismiss.aria','关闭提示')">✕</button>
+    </div>
+
     <!-- Body -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Sidebar -->
@@ -677,6 +690,40 @@
         <!-- Behavior card -->
         <div x-show="settingsTab==='behavior'" class="card bg-base-200 border border-base-300 mb-4">
           <div class="card-body p-4 space-y-4">
+            <!-- 版本与更新 -->
+            <div>
+              <h3 class="font-semibold mb-2" x-text="t('settings.update.title','版本与更新')"></h3>
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="text-sm opacity-70" x-text="tFmt('settings.update.current','当前版本 {v}',{v: update.current || '—'})"></span>
+                <button type="button" class="btn btn-sm btn-outline" @click="checkUpdate()" :disabled="update.checking || update.updating">
+                  <span x-show="!update.checking" x-text="t('settings.update.check','检查更新')"></span>
+                  <span x-show="update.checking" x-text="t('settings.update.checking','检查中…')"></span>
+                </button>
+                <span x-show="update.checked && !update.info?.is_newer && !update.error" class="text-sm text-success" x-text="t('settings.update.uptodate','✓ 已是最新版')"></span>
+                <span x-show="update.error" class="text-sm text-error" x-text="update.error"></span>
+              </div>
+
+              <!-- 发现新版本 -->
+              <div x-show="update.info?.is_newer" class="mt-3 border border-primary/40 rounded-xl overflow-hidden">
+                <div class="p-3 bg-base-100 flex items-center gap-3 flex-wrap">
+                  <span class="badge badge-primary" x-text="tFmt('settings.update.newBadge','新版本 {v}',{v: update.info?.latest})"></span>
+                  <span class="text-xs opacity-60" x-show="update.info?.published_at" x-text="(update.info?.published_at||'').slice(0,10)"></span>
+                  <button type="button" class="btn btn-sm btn-primary ml-auto"
+                          @click="performUpdate()" x-show="update.info?.packaged && !update.updating"
+                          x-text="t('settings.update.now','⬇️ 一键更新')"></button>
+                  <a class="btn btn-sm btn-outline ml-auto" :href="update.info?.html_url" target="_blank" rel="noopener"
+                     x-show="!update.info?.packaged" x-text="t('settings.update.web','去下载页')"></a>
+                </div>
+                <div class="p-3 max-h-60 overflow-y-auto md-body text-sm" x-show="update.info?.notes" x-html="renderMd(update.info?.notes)"></div>
+                <!-- 更新进度 -->
+                <div x-show="update.updating" class="p-3 bg-base-100 border-t border-base-300">
+                  <div class="text-sm mb-2" x-text="updateStageText()"></div>
+                  <progress class="progress progress-primary w-full" :value="update.stage==='downloading' ? update.pct : (update.stage ? 100 : 0)" max="100"></progress>
+                </div>
+              </div>
+              <p class="text-xs opacity-60 mt-2" x-show="!update.info?.packaged && update.checked" x-text="t('settings.update.devNote','开发模式不支持自更新;打包版(.app)才有一键更新。')"></p>
+            </div>
+
             <div>
               <h3 class="font-semibold mb-2" x-text="t('settings.behavior.theme','主题')"></h3>
               <div class="flex gap-2">
