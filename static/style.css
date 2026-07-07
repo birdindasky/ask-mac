@@ -16,16 +16,24 @@ dialog.modal[open],
 dialog.modal.modal-open {
   opacity: 1 !important;
   visibility: visible !important;
+  pointer-events: auto !important;
 }
 dialog.modal:not([open]):not(.modal-open) {
   opacity: 0 !important;
   visibility: hidden !important;
+  pointer-events: none !important;
 }
+/* DaisyUI v5 reveals the box with the individual translate/scale properties
+ * (not `transform`) and flips pointer-events on the dialog. Override every one
+ * of those, or the box paints but stays click-through (pointer-events:none) or
+ * shrunk (scale:.95). */
 dialog.modal[open] .modal-box,
 dialog.modal.modal-open .modal-box {
   opacity: 1 !important;
   visibility: visible !important;
-  transform: none !important;
+  pointer-events: auto !important;
+  translate: 0 !important;
+  scale: 1 !important;
 }
 
 :root {
