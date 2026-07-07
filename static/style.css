@@ -2,6 +2,24 @@
 
 [x-cloak] { display: none !important; }
 
+/* Force open modals visible. DaisyUI v5 shows a modal by transitioning it from
+ * opacity:0/visibility:hidden to visible on open — but that transition does not
+ * apply in the packaged WKWebView, so an [open] dialog stayed stuck invisible
+ * (every modal-opening button looked dead in the .app while the web build was
+ * fine). This overrides the stuck state; scoped to open/modal-open so closed
+ * dialogs stay hidden. Paired with native showModal() (app.js syncModal). */
+dialog.modal[open],
+dialog.modal.modal-open {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+dialog.modal[open] .modal-box,
+dialog.modal.modal-open .modal-box {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
 :root {
   --font-cn: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-en: "Inter", "SF Pro Text", system-ui, sans-serif;
