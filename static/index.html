@@ -615,7 +615,7 @@
     </div>
 
     <!-- Error detail -->
-    <dialog class="modal" :class="{'modal-open': errorDetail.open}">
+    <dialog class="modal" :class="{'modal-open': errorDetail.open}" x-effect="syncModal($el, errorDetail.open)">
       <div class="modal-box max-w-2xl">
         <div class="flex items-center mb-3">
           <h3 class="font-bold text-lg" x-text="errorDetail.title"></h3>
@@ -631,7 +631,7 @@
     </dialog>
 
     <!-- Keyboard cheatsheet -->
-    <dialog class="modal" :class="{'modal-open': showCheatsheet}">
+    <dialog class="modal" :class="{'modal-open': showCheatsheet}" x-effect="syncModal($el, showCheatsheet)">
       <div class="modal-box max-w-2xl">
         <div class="flex items-center mb-4">
           <h3 class="font-bold text-lg" x-text="t('cheatsheet.title','⌨️ 键盘快捷键')"></h3>
@@ -669,7 +669,7 @@
     </dialog>
 
     <!-- Settings dialog -->
-    <dialog class="modal" :class="{'modal-open': showSettings}" @close="showSettings=false" x-ref="settingsDialog" :aria-label="t('settings.title','设置')">
+    <dialog class="modal" :class="{'modal-open': showSettings}" x-effect="syncModal($el, showSettings)" @close="showSettings=false" x-ref="settingsDialog" :aria-label="t('settings.title','设置')">
       <div class="modal-box max-w-4xl">
         <div class="flex items-center mb-4">
           <h2 class="text-xl font-bold" x-text="t('settings.title','设置')"></h2>
@@ -955,7 +955,7 @@
     </dialog>
 
     <!-- Add / edit provider dialog -->
-    <dialog class="modal" :class="{'modal-open': showProviderForm}" :aria-label="t('pform.dialog.aria','编辑 Provider')">
+    <dialog class="modal" :class="{'modal-open': showProviderForm}" x-effect="syncModal($el, showProviderForm)" :aria-label="t('pform.dialog.aria','编辑 Provider')">
       <div class="modal-box max-w-3xl">
         <div class="flex items-center mb-4">
           <h2 class="text-xl font-bold" x-text="providerForm.id ? t('pform.editTitle','编辑 Provider') : t('pform.addTitle','添加 Provider')"></h2>
@@ -1041,7 +1041,7 @@
 
     <!-- Confirm delete -->
     <!-- Export plan dialog (出计划) -->
-    <dialog class="modal" :class="{'modal-open': exportDlg.open}" @close="exportDlg.open=false" :aria-label="t('export.dlg.aria','出计划')">
+    <dialog class="modal" :class="{'modal-open': exportDlg.open}" x-effect="syncModal($el, exportDlg.open)" @close="exportDlg.open=false" :aria-label="t('export.dlg.aria','出计划')">
       <div class="modal-box max-w-2xl">
         <h3 class="font-bold text-lg mb-1" x-text="t('export.dlg.title','📝 出计划')"></h3>
         <p class="text-sm opacity-70 mb-4" x-text="t('export.dlg.sub','撰稿人把整场讨论提炼成计划书,审稿人对照原文挑刺,过关才写进项目。全程在会话里可见。')"></p>
@@ -1101,7 +1101,7 @@
     </dialog>
 
     <!-- Project tag dialog (挂牌) -->
-    <dialog class="modal" :class="{'modal-open': tagDlg.open}" @close="tagDlg.open=false" :aria-label="t('export.tagDlg.aria','项目牌')">
+    <dialog class="modal" :class="{'modal-open': tagDlg.open}" x-effect="syncModal($el, tagDlg.open)" @close="tagDlg.open=false" :aria-label="t('export.tagDlg.aria','项目牌')">
       <div class="modal-box max-w-md">
         <h3 class="font-bold text-lg mb-1" x-text="t('export.tagDlg.title','📁 项目牌')"></h3>
         <p class="text-sm opacity-70 mb-4" x-text="t('export.tagDlg.sub','挂上项目牌后,这场讨论出计划时直奔该项目文件夹。')"></p>
@@ -1129,7 +1129,7 @@
       <form method="dialog" class="modal-backdrop"><button @click="tagDlg.open=false">close</button></form>
     </dialog>
 
-    <dialog class="modal" :class="{'modal-open': confirmModal.show}">
+    <dialog class="modal" :class="{'modal-open': confirmModal.show}" x-effect="syncModal($el, confirmModal.show)">
       <div class="modal-box">
         <h3 class="font-bold text-lg" x-text="confirmModal.title"></h3>
         <p class="py-3" x-text="confirmModal.body"></p>
@@ -1141,7 +1141,7 @@
     </dialog>
 
     <!-- Global search overlay (⌘+F) -->
-    <dialog class="modal" :class="{'modal-open': searchOverlay.open}" @close="closeSearchOverlay()">
+    <dialog class="modal" :class="{'modal-open': searchOverlay.open}" x-effect="syncModal($el, searchOverlay.open)" @close="closeSearchOverlay()">
       <div class="modal-box w-11/12 max-w-3xl">
         <div class="flex items-center gap-2 mb-3">
           <span class="text-lg">🔍</span>

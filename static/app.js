@@ -1546,6 +1546,22 @@ function appData() {
     openSettings() { this.showSettings = true; },
     closeSettings() { this.showSettings = false; },
 
+    // ---- native <dialog> sync ----
+    // DaisyUI v5 modals want the native top layer. Toggling only the
+    // `modal-open` CSS class is the legacy (v4) path and renders unreliably in
+    // WKWebView — a class-shown <dialog> can stay behind other stacking
+    // contexts, so the packaged app showed no modal at all. Driving the real
+    // showModal()/close() puts every dialog in the top layer where it always
+    // paints on top. Additive: the CSS class stays for styling.
+    syncModal(el, open) {
+      if (!el || typeof el.showModal !== 'function') return;
+      const isOpen = el.hasAttribute('open');
+      try {
+        if (open && !isOpen) el.showModal();
+        else if (!open && isOpen) el.close();
+      } catch (e) { /* already open / not open — ignore */ }
+    },
+
     // ---- welcome flow ----
     // Shown when welcome_done === false AND no providers configured, OR
     // when the user manually replays it from settings. Tracks step 1-4
